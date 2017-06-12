@@ -1,9 +1,11 @@
-package com.android.yahoo.sharkfeed;
+package com.android.yahoo.sharkfeed.activity.abs;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
+
+import com.android.yahoo.sharkfeed.R;
 
 public abstract class SingleFragmentActivity extends AppCompatActivity {
 
