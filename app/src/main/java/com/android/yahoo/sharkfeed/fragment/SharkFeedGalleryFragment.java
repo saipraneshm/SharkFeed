@@ -56,7 +56,7 @@ public class SharkFeedGalleryFragment extends Fragment {
         new FetchItemsTask().execute(0);
 
         Handler responseHandler = new Handler();
-        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        mThumbnailDownloader = new ThumbnailDownloader<>(getActivity(),responseHandler);
         mThumbnailDownloader
                 .setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
                     @Override
@@ -87,8 +87,10 @@ public class SharkFeedGalleryFragment extends Fragment {
             }
 
             @Override
-            public void preloadData(int firstVisibleItemPos, int lastVisibleItemPos) {
-
+            public void preloadData(int itemPosition) {
+                Photo photo = mPhotos.get(itemPosition);
+                mThumbnailDownloader.preload(photo.getUrlS());
+              //  Log.d(TAG," got url's for position " + itemPosition + ", url ->" + photo.getUrlS());
             }
         };
         mPhotoRecyclerView.addOnScrollListener(mEndLessScrollListener);
@@ -184,7 +186,8 @@ public class SharkFeedGalleryFragment extends Fragment {
         public void onBindViewHolder(PhotoHolder holder, int position) {
             Photo photo = mPhotos.get(position);
             if(photo.getUrlS() != null)
-            mThumbnailDownloader.queueThumbnail(holder, photo.getUrlS());
+                mThumbnailDownloader.queueThumbnail(holder, photo.getUrlS());
+
         }
 
         @Override

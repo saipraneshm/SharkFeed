@@ -1,15 +1,29 @@
 package com.android.yahoo.sharkfeed.util;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.v4.BuildConfig;
 import android.util.Log;
 import android.util.LruCache;
 
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static android.os.Environment.isExternalStorageRemovable;
 
 /**
  * Created by sai pranesh on 6/12/2017.
@@ -19,6 +33,9 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     private static final String TAG = ThumbnailDownloader.class.getSimpleName();
     private static final int MESSAGE_DOWNLOAD = 0;
+    private static final int MESSAGE_PRELOAD = 1;
+
+    private Context mContext;
 
     private Handler mRequestHandler;
     private Handler mResponseHandler;
@@ -28,11 +45,22 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     //Using LRU cache to cache bitmaps
     private LruCache<String, Bitmap> mMemoryCache;
 
+    //Adding disk cache in-case memory cache fails during runtime configuration changes
+    private DiskLruCache mDiskLruCache;
+    private final Object mDiskCacheLock = new Object();
+    private static final int DISK_CACHE_SIZE = 1024 * 1024 * 10;  //10MB
+    private boolean mDiskCacheStarting = true;
+    private static final String DISK_CACHE_SUBDIR = "thumbnails";
+    private static final int DISK_CACHE_INDEX = 0;
+    private File cacheDir;
+
     private ThumbnailDownloadListener mThumbnailDownloadListener;
 
-    public ThumbnailDownloader(Handler handler) {
+    public ThumbnailDownloader(Context context, Handler handler) {
         super(TAG);
+        mContext = context;
         mResponseHandler = handler;
+
         final int maxMemory = (int) Runtime.getRuntime().maxMemory(); //getting the max memory
 
         final int cacheSize = maxMemory / 8; //using 1/8th memory for the cache
@@ -43,17 +71,196 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                 return bitmap.getByteCount() / 1024; //using kilobytes to calculate the cache size
             }
         };
+
+       cacheDir = getDiskCacheDir(mContext , DISK_CACHE_SUBDIR);
+       new InitDiskCacheTask().execute(cacheDir);
     }
 
+    private class InitDiskCacheTask extends AsyncTask<File, Void, Void> {
+        @Override
+        protected Void doInBackground(File... params) {
+            synchronized (mDiskCacheLock) {
+                File cacheDir = params[0];
+                try {
+                    mDiskLruCache = DiskLruCache.open(cacheDir, 1, 1,DISK_CACHE_SIZE);
+                } catch (IOException e) {
+                    Log.e(TAG, " Failed to initialize disk cache", e);
+                }
+                mDiskCacheStarting = false; // Finished initialization
+                mDiskCacheLock.notifyAll(); // Wake any waiting threads
+
+            }
+            return null;
+        }
+    }
+
+
+/*
     public void addBitmapToMemoryCache(String target, Bitmap bitmap){
         if(getBitmapFromMemoryCache(target) == null){
             mMemoryCache.put(target, bitmap);
         }
+    }*/
+
+/*    public void addBitmapToCache(String key, Bitmap bitmap) {
+        // Add to memory cache as before
+        if (getBitmapFromMemoryCache(key) == null) {
+            mMemoryCache.put(key, bitmap);
+        }
+
+        // Also add to disk cache
+        synchronized (mDiskCacheLock) {
+            if (mDiskLruCache != null && mDiskLruCache.get(key) == null) {
+                mDiskLruCache.put(key, bitmap);
+                mDiskLruCache.edit(key).
+            }
+        }
+    }*/
+
+    /**
+     * Adds a bitmap to both memory and disk cache.
+     * @param data Unique identifier for the bitmap to store
+     * @param value The bitmap drawable to store
+     */
+    public void addBitmapToCache(String data, Bitmap value) {
+        //BEGIN_INCLUDE(add_bitmap_to_cache)
+        if (data == null || value == null) {
+            return;
+        }
+
+        // Add to memory cache
+        if (mMemoryCache != null) {
+            mMemoryCache.put(data, value);
+        }
+
+        synchronized (mDiskCacheLock) {
+            // Add to disk cache
+            if (mDiskLruCache != null) {
+                final String key = hashKeyForDisk(data);
+                OutputStream out = null;
+                try {
+                    DiskLruCache.Snapshot snapshot = mDiskLruCache.get(key);
+                    if (snapshot == null) {
+                        final DiskLruCache.Editor editor = mDiskLruCache.edit(key);
+                        if (editor != null) {
+                            out = editor.newOutputStream(DISK_CACHE_INDEX);
+                            editor.commit();
+                            out.close();
+                        }
+                    } else {
+                        snapshot.getInputStream(DISK_CACHE_INDEX).close();
+                    }
+                } catch (final IOException e) {
+                    Log.e(TAG, "addBitmapToCache - " + e);
+                }  finally {
+                    try {
+                        if (out != null) {
+                            out.close();
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG,"unable to close stream: ", e);
+                    }
+                }
+            }
+        }
+        //END_INCLUDE(add_bitmap_to_cache)
+    }
+
+    /**
+     * Get from disk cache.
+     *
+     * @param data Unique identifier for which item to get
+     * @return The bitmap if found in cache, null otherwise
+     */
+    public Bitmap getBitmapFromDiskCache(String data) {
+        //BEGIN_INCLUDE(get_bitmap_from_disk_cache)
+        final String key = hashKeyForDisk(data);
+        Bitmap bitmap = null;
+
+        synchronized (mDiskCacheLock) {
+            while (mDiskCacheStarting) {
+                try {
+                    mDiskCacheLock.wait();
+                } catch (InterruptedException e) {}
+            }
+            if (mDiskLruCache != null) {
+                InputStream inputStream = null;
+                try {
+                    final DiskLruCache.Snapshot snapshot = mDiskLruCache.get(key);
+                    if (snapshot != null) {
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "Disk cache hit");
+                        }
+                        inputStream = snapshot.getInputStream(DISK_CACHE_INDEX);
+                        if (inputStream != null) {
+                            FileDescriptor fd = ((FileInputStream) inputStream).getFD();
+
+                            // Decode bitmap, but we don't want to sample so give
+                            // MAX_VALUE as the target dimensions
+                            bitmap = BitmapFactory.decodeFileDescriptor(fd);
+                        }
+                    }
+                } catch (final IOException e) {
+                    Log.e(TAG, "getBitmapFromDiskCache - " + e);
+                } finally {
+                    try {
+                        if (inputStream != null) {
+                            inputStream.close();
+                        }
+                    } catch (IOException e) {}
+                }
+            }
+            return bitmap;
+        }
+        //END_INCLUDE(get_bitmap_from_disk_cache)
+    }
+
+    /**
+     * A hashing method that changes a string (like a URL) into a hash suitable for using as a
+     * disk filename.
+     */
+    public static String hashKeyForDisk(String key) {
+        String cacheKey;
+        try {
+            final MessageDigest mDigest = MessageDigest.getInstance("MD5");
+            mDigest.update(key.getBytes());
+            cacheKey = bytesToHexString(mDigest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            cacheKey = String.valueOf(key.hashCode());
+        }
+        return cacheKey;
+    }
+
+    private static String bytesToHexString(byte[] bytes) {
+        // http://stackoverflow.com/questions/332079
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < bytes.length; i++) {
+            String hex = Integer.toHexString(0xFF & bytes[i]);
+            if (hex.length() == 1) {
+                sb.append('0');
+            }
+            sb.append(hex);
+        }
+        return sb.toString();
     }
 
     public Bitmap getBitmapFromMemoryCache(String target){
         return mMemoryCache.get(target);
     }
+
+    // Creates a unique subdirectory of the designated app cache directory. Tries to use external
+    // but if not mounted, falls back on internal storage.
+    private File getDiskCacheDir(Context context, String uniqueName) {
+        // Check if media is mounted or storage is built-in, if so, try and use external cache dir
+        // otherwise use internal cache dir
+        final String cachePath =
+                Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState()) ||
+                        !isExternalStorageRemovable() ? context.getExternalCacheDir().getPath() :
+                        context.getCacheDir().getPath();
+
+        return new File(cachePath + File.separator + uniqueName);
+    }
+
 
     public interface ThumbnailDownloadListener<T>{
         void onThumbnailDownloaded(T target, Bitmap thumbnail);
@@ -72,10 +279,14 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                     T target = (T) msg.obj;
                     Log.d(TAG, " Got a request for url: " + mRequestMap.get(target) );
                     handleRequest(target);
+                }else if(msg.what == MESSAGE_PRELOAD){
+                    String url = (String) msg.obj;
+                    preloadBitmapsIntoCache(url);
                 }
             }
         };
     }
+
 
     void handleRequest(final T target){
         try{
@@ -85,13 +296,17 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             Bitmap bitmap = getBitmapFromMemoryCache(url);
 
             if(bitmap == null){
-                byte[] bitmapBytes = FlickrFetcher.getUrlBytes(url);
-                bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-                addBitmapToMemoryCache(url,bitmap);
+                bitmap = getBitmapFromDiskCache(url);
+                if(bitmap == null){
+                    byte[] bitmapBytes = FlickrFetcher.getUrlBytes(url);
+                    bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                    Log.d(TAG, "Bitmap has been created");
+                    addBitmapToCache(url,bitmap);
+                }
             }
             final Bitmap postBitmap = bitmap;
             //final Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-            Log.d(TAG, "Bitmap has been created");
+
 
             mResponseHandler.post(new Runnable() {
                 @Override
@@ -107,12 +322,38 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         }
     }
 
+    private void preloadBitmapsIntoCache(String url){
+        try{
+
+            if(url == null) return;
+            Bitmap bitmap = getBitmapFromMemoryCache(url);
+
+            if(bitmap == null){
+                bitmap = getBitmapFromDiskCache(url);
+                if(bitmap == null){
+                    byte[] bitmapBytes = FlickrFetcher.getUrlBytes(url);
+                    bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+                    addBitmapToCache(url,bitmap);
+                }
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Error downloading image ", e);
+        }
+    }
+
+
     public void queueThumbnail(T target, String url){
         if(url == null){
             mRequestMap.remove(target);
         }else{
             mRequestMap.put(target, url);
             mRequestHandler.obtainMessage(MESSAGE_DOWNLOAD, target).sendToTarget();
+        }
+    }
+
+    public void preload(String url){
+        if(url != null){
+            mRequestHandler.obtainMessage(MESSAGE_PRELOAD, url).sendToTarget();
         }
     }
 

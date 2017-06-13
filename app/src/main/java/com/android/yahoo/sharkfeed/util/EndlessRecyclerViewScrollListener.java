@@ -38,16 +38,33 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
 
             int lastVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findLastVisibleItemPosition();
             int firstVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findFirstVisibleItemPosition();
+            int totalItemCount = mLayoutManager.getItemCount();
 
-            int lastCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findLastCompletelyVisibleItemPosition();
-            int firstCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findFirstCompletelyVisibleItemPosition();
 
-            Log.d(TAG, "Recycler View state is idle: last ->"
+            /*int lastCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findLastCompletelyVisibleItemPosition();
+            int firstCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findFirstCompletelyVisibleItemPosition();*/
+
+            /*Log.d(TAG, "Recycler View state is idle: last ->"
                     + lastVisibleItemPosition + ", first -> " + firstVisibleItemPosition + ", lastC - >"
-                    + lastCompletelyVisibleItemPosition + ", firstC -> " + firstCompletelyVisibleItemPosition);
+                    + lastCompletelyVisibleItemPosition + ", firstC -> " + firstCompletelyVisibleItemPosition);*/
+            int difference = lastVisibleItemPosition - firstVisibleItemPosition;
 
+            int start = firstVisibleItemPosition > difference
+                    ? firstVisibleItemPosition - difference : firstVisibleItemPosition;
+            int last  = lastVisibleItemPosition + difference < totalItemCount
+                    ? lastVisibleItemPosition + difference
+                    : totalItemCount - lastVisibleItemPosition;
+
+            for(int i = last  ; i > start; i-- ){
+                preloadData(i);
+            }
             //preloadData();
         }
+
+
+    }
+
+    private void getViewholder(int position){
 
     }
 
@@ -60,8 +77,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             int totalItemCount = mLayoutManager.getItemCount();
 
             lastVisibleItemPosition = ((GridLayoutManager) mLayoutManager).findLastVisibleItemPosition();
-           // int firstVisibleItemPosition = ((GridLayoutManager) mLayoutManager).findFirstVisibleItemPosition();
-
 
             // If the total item count is zero and the previous isn't, assume the
             // list is invalidated and should be reset back to initial state
@@ -108,7 +123,7 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         // Defines the process for actually loading more data based on page
         public abstract void onLoadMore(int page, int totalItemsCount, RecyclerView view);
 
-        public abstract void preloadData(int firstVisibleItemPos, int lastVisibleItemPos);
+        public abstract void preloadData(int itemPosition);
 
 
 }
