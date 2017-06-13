@@ -1,12 +1,17 @@
 package com.android.yahoo.sharkfeed.fragment;
 
 
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +21,7 @@ import com.android.yahoo.sharkfeed.R;
 import com.android.yahoo.sharkfeed.model.Photo;
 import com.android.yahoo.sharkfeed.util.EndlessRecyclerViewScrollListener;
 import com.android.yahoo.sharkfeed.util.FlickrFetcher;
+import com.android.yahoo.sharkfeed.util.ThumbnailDownloader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +38,7 @@ public class SharkFeedGalleryFragment extends Fragment {
     private List<Photo> mPhotos = new ArrayList<>();
     private RecyclerView.OnScrollListener mEndLessScrollListener;
     private RecyclerView.Adapter mPhotoRecyclerViewAdapter = new PhotoAdapter(mPhotos);
-
-
+    private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
 
     public SharkFeedGalleryFragment() {
@@ -49,6 +54,21 @@ public class SharkFeedGalleryFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         new FetchItemsTask().execute(0);
+
+        Handler responseHandler = new Handler();
+        mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
+        mThumbnailDownloader
+                .setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
+                    @Override
+                    public void onThumbnailDownloaded(PhotoHolder photoHolder, Bitmap thumbnail) {
+                        Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
+                        photoHolder.bindDrawable(drawable);
+                    }
+        });
+        mThumbnailDownloader.start();
+        mThumbnailDownloader.getLooper();
+        Log.d(TAG, "Background thread started");
+
     }
 
     @Override
@@ -65,9 +85,27 @@ public class SharkFeedGalleryFragment extends Fragment {
                 new FetchItemsTask(mPhotoRecyclerViewAdapter, totalItemsCount, view)
                                 .execute(page);
             }
+
+            @Override
+            public void preloadData(int firstVisibleItemPos, int lastVisibleItemPos) {
+
+            }
         };
         mPhotoRecyclerView.addOnScrollListener(mEndLessScrollListener);
         return view;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mThumbnailDownloader.quit();
+        Log.d(TAG, "Background thread destroyed");
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mThumbnailDownloader.clearQueue();
     }
 
     private void setUpAdapter(){
@@ -119,6 +157,11 @@ public class SharkFeedGalleryFragment extends Fragment {
             mImageView = (ImageView) itemView
                     .findViewById(R.id.fragment_shark_feed_gallery_image_view);
         }
+
+        void bindDrawable(Drawable drawable){
+            mImageView.setImageDrawable(drawable);
+        }
+
     }
 
     private class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder>{
@@ -140,7 +183,8 @@ public class SharkFeedGalleryFragment extends Fragment {
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
             Photo photo = mPhotos.get(position);
-
+            if(photo.getUrlS() != null)
+            mThumbnailDownloader.queueThumbnail(holder, photo.getUrlS());
         }
 
         @Override

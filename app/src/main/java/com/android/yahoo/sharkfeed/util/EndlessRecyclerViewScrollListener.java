@@ -2,6 +2,7 @@ package com.android.yahoo.sharkfeed.util;
 
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 
 /**
  * Created by sai pranesh on 6/12/2017.
@@ -10,7 +11,8 @@ import android.support.v7.widget.RecyclerView;
 public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnScrollListener {
 
 
-        // The minimum amount of items to have below your current scroll position
+    private static final String TAG = EndlessRecyclerViewScrollListener.class.getSimpleName();
+    // The minimum amount of items to have below your current scroll position
         // before loading more.
         private int visibleThreshold = 5;
         // The current offset index of data you have loaded
@@ -30,7 +32,26 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             visibleThreshold = visibleThreshold * layoutManager.getSpanCount();
         }
 
-        // This happens many times a second during a scroll, so be wary of the code you place here.
+    @Override
+    public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+        if(newState == RecyclerView.SCROLL_STATE_IDLE){
+
+            int lastVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findLastVisibleItemPosition();
+            int firstVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findFirstVisibleItemPosition();
+
+            int lastCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findLastCompletelyVisibleItemPosition();
+            int firstCompletelyVisibleItemPosition = ((GridLayoutManager)mLayoutManager).findFirstCompletelyVisibleItemPosition();
+
+            Log.d(TAG, "Recycler View state is idle: last ->"
+                    + lastVisibleItemPosition + ", first -> " + firstVisibleItemPosition + ", lastC - >"
+                    + lastCompletelyVisibleItemPosition + ", firstC -> " + firstCompletelyVisibleItemPosition);
+
+            //preloadData();
+        }
+
+    }
+
+    // This happens many times a second during a scroll, so be wary of the code you place here.
         // We are given a few useful parameters to help us work out if we need to load some more data,
         // but first we check if we are waiting for the previous load to finish.
         @Override
@@ -39,6 +60,7 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             int totalItemCount = mLayoutManager.getItemCount();
 
             lastVisibleItemPosition = ((GridLayoutManager) mLayoutManager).findLastVisibleItemPosition();
+           // int firstVisibleItemPosition = ((GridLayoutManager) mLayoutManager).findFirstVisibleItemPosition();
 
 
             // If the total item count is zero and the previous isn't, assume the
@@ -85,6 +107,8 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
 
         // Defines the process for actually loading more data based on page
         public abstract void onLoadMore(int page, int totalItemsCount, RecyclerView view);
+
+        public abstract void preloadData(int firstVisibleItemPos, int lastVisibleItemPos);
 
 
 }
