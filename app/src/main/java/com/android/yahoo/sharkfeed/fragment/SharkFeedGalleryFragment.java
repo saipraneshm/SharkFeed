@@ -1,28 +1,41 @@
 package com.android.yahoo.sharkfeed.fragment;
 
 
+import android.app.DownloadManager;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 
 import com.android.yahoo.sharkfeed.R;
+import com.android.yahoo.sharkfeed.activity.LightBoxActivity;
 import com.android.yahoo.sharkfeed.model.Photo;
+import com.android.yahoo.sharkfeed.util.AppUtils;
 import com.android.yahoo.sharkfeed.util.EndlessRecyclerViewScrollListener;
 import com.android.yahoo.sharkfeed.util.FlickrFetcher;
+import com.android.yahoo.sharkfeed.util.QueryPreferences;
 import com.android.yahoo.sharkfeed.util.ThumbnailDownloader;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,7 +66,9 @@ public class SharkFeedGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute(0);
+        setHasOptionsMenu(true);
+
+        updateItems(0, 0, false);
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(getActivity(),responseHandler);
@@ -82,8 +97,7 @@ public class SharkFeedGalleryFragment extends Fragment {
         mEndLessScrollListener = new EndlessRecyclerViewScrollListener(gridLayoutManager){
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
-                new FetchItemsTask(mPhotoRecyclerViewAdapter, totalItemsCount, view)
-                                .execute(page);
+                updateItems(page, totalItemsCount, false);
             }
 
             @Override
@@ -94,7 +108,81 @@ public class SharkFeedGalleryFragment extends Fragment {
             }
         };
         mPhotoRecyclerView.addOnScrollListener(mEndLessScrollListener);
+        ViewTreeObserver viewTreeObserver = mPhotoRecyclerView.getViewTreeObserver();
+        viewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                calculateCellSize();
+            }
+        });
+
         return view;
+    }
+
+    private static final int sColumnWidth = 120;
+
+    //method to dynamically calculate the column span based on device.
+    private void calculateCellSize(){
+        int spanCount = (int) Math.ceil( mPhotoRecyclerView.getWidth() / convertDPToPixels(sColumnWidth));
+        ((GridLayoutManager) mPhotoRecyclerView.getLayoutManager() ).setSpanCount(spanCount);
+    }
+
+    private float convertDPToPixels(int dp) {
+        DisplayMetrics metrics = new DisplayMetrics();
+        getActivity().getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        float logicalDensity = metrics.density;
+        return dp * logicalDensity;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_shark_feed_menu, menu);
+
+        final MenuItem menuItem = menu.findItem(R.id.menu_item_search);
+
+        final SearchView searchView = (SearchView) menuItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.d(TAG, "query submitted : " + query);
+                AppUtils.hideKeyboard(getActivity(), searchView);
+                menuItem.collapseActionView();
+                searchView.onActionViewCollapsed();
+                QueryPreferences.setStoredQuery(getActivity(), query);
+                updateItems(0,0,true);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
+
+       /* searchView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String query = QueryPreferences.getStoredQuery(getActivity());
+                Log.d(TAG, "stored  query: " + query);
+                searchView.setQuery(query, false);
+            }
+        });*/
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()){
+            case R.id.menu_clear_search:
+               // Log.d(TAG, " clicked on clear search ");
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updateItems(0,0,true);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     @Override
@@ -116,28 +204,52 @@ public class SharkFeedGalleryFragment extends Fragment {
         }
     }
 
+    private void updateItems(int page, int totalItemCount, boolean isSearchQuery){
+        String query = QueryPreferences.getStoredQuery(getActivity());
+        Log.d(TAG, " update items called with "+ query + " " + page);
+        new FetchItemsTask(mPhotoRecyclerViewAdapter, totalItemCount, isSearchQuery)
+                .execute(String.valueOf(page), query);
+    }
 
-    private class FetchItemsTask extends AsyncTask<Integer, Void, List<Photo>>{
+
+    private class FetchItemsTask extends AsyncTask<String, Void, List<Photo>>{
 
         private RecyclerView.Adapter mAdapter;
         private int mTotalItemsCount;
-        private RecyclerView mRecyclerView;
+        private boolean isSearchQuery = false;
 
-        FetchItemsTask(RecyclerView.Adapter adapter, int totalItemsCount, RecyclerView recyclerView){
+        FetchItemsTask(RecyclerView.Adapter adapter, int totalItemsCount, boolean isSearchQuery){
             mAdapter = adapter;
             mTotalItemsCount = totalItemsCount;
-            mRecyclerView = recyclerView;
+            this.isSearchQuery = isSearchQuery;
         }
 
-        FetchItemsTask(){}
-
         @Override
-        protected List<Photo> doInBackground(Integer... page) {
-            return new FlickrFetcher().fetchItems(page[0]);
+        protected List<Photo> doInBackground(String... page) {
+
+            FlickrFetcher flickrFetcher = new FlickrFetcher();
+
+            if(page.length > 1 && page[1] != null){
+                return flickrFetcher.searchSharkPhotos(page[1], Integer.valueOf(page[0]));
+            }else{
+                Log.d(TAG, "default called");
+                return flickrFetcher.fetchSharkPhotos(Integer.valueOf(page[0]));
+            }
+
         }
 
         @Override
         protected void onPostExecute(List<Photo> photoList) {
+
+            Log.d(TAG, " on post execute called");
+            if(isSearchQuery){
+                mPhotos.clear();
+                mPhotos.addAll(photoList);
+                mAdapter.notifyDataSetChanged();
+                isSearchQuery = false;
+                return;
+            }
+
             mPhotos.addAll(photoList);
             if(mTotalItemsCount == 0){
                 setUpAdapter();
@@ -150,6 +262,7 @@ public class SharkFeedGalleryFragment extends Fragment {
         }
     }
 
+
     private class PhotoHolder extends RecyclerView.ViewHolder{
 
         private ImageView mImageView;
@@ -158,11 +271,31 @@ public class SharkFeedGalleryFragment extends Fragment {
             super(itemView);
             mImageView = (ImageView) itemView
                     .findViewById(R.id.fragment_shark_feed_gallery_image_view);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Photo photo = (Photo) mImageView.getTag();
+                    Intent intent = new Intent(getActivity(), LightBoxActivity.class);
+                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_C, photo.getUrlC());
+                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_L, photo.getUrlL());
+                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_O, photo.getUrlO());
+                    startActivity(intent);
+                    Log.d(TAG, "clicked on the image with title " + photo.getTitle());
+                }
+            });
         }
 
         void bindDrawable(Drawable drawable){
             mImageView.setImageDrawable(drawable);
         }
+
+        /*private File getPhotoFile(Photo photo){
+            File externalFileDir = getActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+
+            if(externalFileDir == null) return null;
+
+            return new File(externalFileDir , photo.getPhotoFileName());
+        }*/
 
     }
 
@@ -185,8 +318,12 @@ public class SharkFeedGalleryFragment extends Fragment {
         @Override
         public void onBindViewHolder(PhotoHolder holder, int position) {
             Photo photo = mPhotos.get(position);
-            if(photo.getUrlS() != null)
+            if(photo.getUrlS() != null && (photo.getUrlC() != null
+                    || photo.getUrlL() != null || photo.getUrlO() != null)){
                 mThumbnailDownloader.queueThumbnail(holder, photo.getUrlS());
+                holder.mImageView.setTag(photo);
+            }
+
 
         }
 

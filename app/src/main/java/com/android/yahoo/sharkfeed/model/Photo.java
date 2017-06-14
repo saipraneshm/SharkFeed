@@ -3,6 +3,8 @@ package com.android.yahoo.sharkfeed.model;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+import java.io.File;
+
 /**
  * Created by sai pranesh on 6/12/2017.
  * created using http://www.jsonschema2pojo.org/
@@ -273,5 +275,9 @@ public class Photo {
 
     public void setWidthS(String widthS) {
         this.widthS = widthS;
+    }
+
+    public String getPhotoFileName(){
+        return "IMG_" + getId() + ".jpg";
     }
 }

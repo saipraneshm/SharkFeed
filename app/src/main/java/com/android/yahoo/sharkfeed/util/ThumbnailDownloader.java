@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -35,14 +34,13 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private static final int MESSAGE_DOWNLOAD = 0;
     private static final int MESSAGE_PRELOAD = 1;
 
-    private Context mContext;
 
     private Handler mRequestHandler;
     private Handler mResponseHandler;
 
     private ConcurrentHashMap<T, String> mRequestMap = new ConcurrentHashMap<>();
 
-    //Using LRU cache to cache bitmaps
+    //Using LRU cache to cache thumbnail bitmaps
     private LruCache<String, Bitmap> mMemoryCache;
 
     //Adding disk cache in-case memory cache fails during runtime configuration changes
@@ -52,13 +50,13 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private boolean mDiskCacheStarting = true;
     private static final String DISK_CACHE_SUBDIR = "thumbnails";
     private static final int DISK_CACHE_INDEX = 0;
-    private File cacheDir;
 
-    private ThumbnailDownloadListener mThumbnailDownloadListener;
+
+    private ThumbnailDownloadListener<T> mThumbnailDownloadListener;
 
     public ThumbnailDownloader(Context context, Handler handler) {
         super(TAG);
-        mContext = context;
+
         mResponseHandler = handler;
 
         final int maxMemory = (int) Runtime.getRuntime().maxMemory(); //getting the max memory
@@ -72,7 +70,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             }
         };
 
-       cacheDir = getDiskCacheDir(mContext , DISK_CACHE_SUBDIR);
+       File cacheDir = getDiskCacheDir(context , DISK_CACHE_SUBDIR);
        new InitDiskCacheTask().execute(cacheDir);
     }
 
@@ -122,7 +120,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
      * @param data Unique identifier for the bitmap to store
      * @param value The bitmap drawable to store
      */
-    public void addBitmapToCache(String data, Bitmap value) {
+    private void addBitmapToCache(String data, Bitmap value) {
         //BEGIN_INCLUDE(add_bitmap_to_cache)
         if (data == null || value == null) {
             return;
@@ -172,7 +170,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
      * @param data Unique identifier for which item to get
      * @return The bitmap if found in cache, null otherwise
      */
-    public Bitmap getBitmapFromDiskCache(String data) {
+    private Bitmap getBitmapFromDiskCache(String data) {
         //BEGIN_INCLUDE(get_bitmap_from_disk_cache)
         final String key = hashKeyForDisk(data);
         Bitmap bitmap = null;
@@ -181,7 +179,9 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             while (mDiskCacheStarting) {
                 try {
                     mDiskCacheLock.wait();
-                } catch (InterruptedException e) {}
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Disk cache error: " , e);
+                }
             }
             if (mDiskLruCache != null) {
                 InputStream inputStream = null;
@@ -207,7 +207,9 @@ public class ThumbnailDownloader<T> extends HandlerThread {
                         if (inputStream != null) {
                             inputStream.close();
                         }
-                    } catch (IOException e) {}
+                    } catch (IOException e) {
+                        Log.e(TAG, "bitmap cache disk problem: ", e);
+                    }
                 }
             }
             return bitmap;
@@ -219,7 +221,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
      * A hashing method that changes a string (like a URL) into a hash suitable for using as a
      * disk filename.
      */
-    public static String hashKeyForDisk(String key) {
+    private static String hashKeyForDisk(String key) {
         String cacheKey;
         try {
             final MessageDigest mDigest = MessageDigest.getInstance("MD5");
@@ -234,8 +236,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     private static String bytesToHexString(byte[] bytes) {
         // http://stackoverflow.com/questions/332079
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < bytes.length; i++) {
-            String hex = Integer.toHexString(0xFF & bytes[i]);
+        for (byte aByte : bytes) {
+            String hex = Integer.toHexString(0xFF & aByte);
             if (hex.length() == 1) {
                 sb.append('0');
             }
@@ -244,7 +246,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         return sb.toString();
     }
 
-    public Bitmap getBitmapFromMemoryCache(String target){
+    private Bitmap getBitmapFromMemoryCache(String target){
         return mMemoryCache.get(target);
     }
 
@@ -266,7 +268,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         void onThumbnailDownloaded(T target, Bitmap thumbnail);
     }
 
-    public void setThumbnailDownloadListener(ThumbnailDownloadListener thumbnailDownloadListener) {
+    public void setThumbnailDownloadListener(ThumbnailDownloadListener<T> thumbnailDownloadListener) {
         mThumbnailDownloadListener = thumbnailDownloadListener;
     }
 
@@ -277,7 +279,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             public void handleMessage(Message msg) {
                 if(msg.what == MESSAGE_DOWNLOAD){
                     T target = (T) msg.obj;
-                    Log.d(TAG, " Got a request for url: " + mRequestMap.get(target) );
+                   // Log.d(TAG, " Got a request for url: " + mRequestMap.get(target) );
                     handleRequest(target);
                 }else if(msg.what == MESSAGE_PRELOAD){
                     String url = (String) msg.obj;
@@ -287,8 +289,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         };
     }
 
-
-    void handleRequest(final T target){
+    private void handleRequest(final T target){
         try{
             final String url = mRequestMap.get(target);
 
@@ -359,5 +360,6 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     public void clearQueue(){
         mRequestHandler.removeMessages(MESSAGE_DOWNLOAD);
+        mRequestHandler.removeMessages(MESSAGE_PRELOAD);
     }
 }

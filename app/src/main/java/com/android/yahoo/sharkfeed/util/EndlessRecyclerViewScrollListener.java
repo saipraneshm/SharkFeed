@@ -64,9 +64,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
 
     }
 
-    private void getViewholder(int position){
-
-    }
 
     // This happens many times a second during a scroll, so be wary of the code you place here.
         // We are given a few useful parameters to help us work out if we need to load some more data,
@@ -119,6 +116,8 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             this.previousTotalItemCount = 0;
             this.loading = false;
         }
+
+
 
         // Defines the process for actually loading more data based on page
         public abstract void onLoadMore(int page, int totalItemsCount, RecyclerView view);

@@ -27,6 +27,15 @@ public class FlickrFetcher {
 
     private static final String TAG = FlickrFetcher.class.getSimpleName();
     private static final String API_KEY = "949e98778755d1982f537d56236bbb42";
+    private static final Uri ENDPOINT = Uri
+            .parse("https://api.flickr.com/services/rest/")
+            .buildUpon()
+            .appendQueryParameter("method","flickr.photos.search")
+            .appendQueryParameter("api_key", API_KEY)
+            .appendQueryParameter("format", "json")
+            .appendQueryParameter("nojsoncallback", "1")
+            .appendQueryParameter("extras", "url_s,url_t,url_c,url_l,url_o")
+            .build();
 
 
 
@@ -62,23 +71,9 @@ public class FlickrFetcher {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<Photo> fetchItems(int page){
-
+    private List<Photo> fetchItems(String url){
         List<Photo> photoList = new ArrayList<>();
         try{
-            String url = Uri
-                    .parse("https://api.flickr.com/services/rest/")
-                    .buildUpon()
-                    .appendQueryParameter("method","flickr.photos.search")
-                    .appendQueryParameter("api_key", API_KEY)
-                    .appendQueryParameter("format", "json")
-                    .appendQueryParameter("text","shark")
-                    .appendQueryParameter("nojsoncallback", "1")
-                    .appendQueryParameter("page", String.valueOf(page))
-                    .appendQueryParameter("extras", "url_s,url_t,url_c,url_l,url_o")
-                    .build()
-                    .toString();
-
             String jsonString = getUrlString(url);
             Log.d(TAG, "Received JSON: " + jsonString);
             JSONObject jsonObject = new JSONObject(jsonString);
@@ -90,6 +85,28 @@ public class FlickrFetcher {
             Log.e(TAG, "Failed to fetch items: ", ioe);
         }
         return photoList;
+    }
+
+    private String buildUrl(String query, int page){
+        Uri.Builder uriBuilder = ENDPOINT.buildUpon();
+        if(query == null){
+            uriBuilder.appendQueryParameter("text", "shark");
+        }else{
+            uriBuilder.appendQueryParameter("text", "shark " + query);
+        }
+
+        return uriBuilder.appendQueryParameter("page", String.valueOf(page)).build().toString();
+    }
+
+    public List<Photo> fetchSharkPhotos(int page){
+        String url = buildUrl(null, page);
+        return fetchItems(url);
+    }
+
+    public List<Photo> searchSharkPhotos(String query , int page){
+        String url = buildUrl(query, page);
+        Log.d(TAG, "search shark photos url : " + url);
+        return fetchItems(url);
     }
 
 
