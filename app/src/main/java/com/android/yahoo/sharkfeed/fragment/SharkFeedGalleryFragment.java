@@ -12,6 +12,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
@@ -52,6 +53,7 @@ public class SharkFeedGalleryFragment extends Fragment {
     private RecyclerView.OnScrollListener mEndLessScrollListener;
     private RecyclerView.Adapter mPhotoRecyclerViewAdapter = new PhotoAdapter(mPhotos);
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
+    private SwipeRefreshLayout mSwipeRefreshLayout;
 
 
     public SharkFeedGalleryFragment() {
@@ -91,6 +93,8 @@ public class SharkFeedGalleryFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_shark_feed_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.shark_feed_gallery_recycler_view);
+        mSwipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
+
         GridLayoutManager gridLayoutManager = new GridLayoutManager(getActivity(), 3);
         mPhotoRecyclerView.setLayoutManager(gridLayoutManager);
         setUpAdapter();
@@ -115,6 +119,19 @@ public class SharkFeedGalleryFragment extends Fragment {
                 calculateCellSize();
             }
         });
+
+        mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                updateItems(0, 0, true);
+            }
+        });
+
+        mSwipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light,
+                android.R.color.holo_orange_light,
+                android.R.color.holo_red_light);
+
 
         return view;
     }
@@ -247,6 +264,7 @@ public class SharkFeedGalleryFragment extends Fragment {
                 mPhotos.addAll(photoList);
                 mAdapter.notifyDataSetChanged();
                 isSearchQuery = false;
+                mSwipeRefreshLayout.setRefreshing(false);
                 return;
             }
 
