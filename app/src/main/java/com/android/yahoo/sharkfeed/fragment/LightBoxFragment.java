@@ -1,13 +1,26 @@
 package com.android.yahoo.sharkfeed.fragment;
 
 
+import android.Manifest;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContentResolverCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,8 +30,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import com.android.yahoo.sharkfeed.R;
 import com.android.yahoo.sharkfeed.util.HighQualityImageDownloader;
@@ -37,11 +52,13 @@ public class LightBoxFragment extends Fragment {
     public static final String DOWNLOAD_URL_C = "LightBoxFragment.DOWNLOAD_URL_C";
     public static final String DOWNLOAD_URL_L = "LightBoxFragment.DOWNLOAD_URL_L";
     public static final String DOWNLOAD_URL_O = "LightBoxFragment.DOWNLOAD_URL_O";
+    private static final int REQUEST_IMAGE_DOWNLOAD = 45;
 
     private HighQualityImageDownloader<ImageView> mImageDownloader;
 
     private ImageView mImageView;
     private ProgressBar mProgressBar;
+    private Button mDownloadButton;
 
     public LightBoxFragment() {
         // Required empty public constructor
@@ -98,6 +115,36 @@ public class LightBoxFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_light_box, container, false);
         mImageView = (ImageView) view.findViewById(R.id.highQualityImageView);
         mProgressBar = (ProgressBar) view.findViewById(R.id.progressBar);
+        mDownloadButton = (Button) view.findViewById(R.id.download_image_btn);
+
+        mDownloadButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+
+                if(ContextCompat.checkSelfPermission(getActivity(),
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED){
+                    ActivityCompat.requestPermissions(getActivity(),
+                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                            REQUEST_IMAGE_DOWNLOAD);
+
+                }else{
+                  //  Log.d(TAG, " storing data into the device");
+                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                  //  Log.d(TAG, "is bitmap null ? " + (bitmap == null));
+                    ContentResolver cr = getActivity().getContentResolver();
+                    String title = "first download";
+                    String description = "dummy description";
+                    String savedUrl =  MediaStore.Images.Media
+                            .insertImage(cr, bitmap, title, description);
+                    Toast.makeText(getActivity(), " downloaded image into " + savedUrl,
+                            Toast.LENGTH_SHORT).show();
+                }
+
+
+            }
+        });
 
      //   mProgressBar.setVisibility(View.VISIBLE);
 
@@ -116,8 +163,29 @@ public class LightBoxFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+      //  Log.d(TAG, "inside request Permisson result");
+       switch(requestCode){
+           case REQUEST_IMAGE_DOWNLOAD:
+               if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                   Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                   ContentResolver cr = getActivity().getContentResolver();
+                   String title = "first download";
+                   String description = "dummy description";
+                   String savedUrl =  MediaStore.Images.Media
+                           .insertImage(cr, bitmap, title, description);
+                   Toast.makeText(getActivity(), " downloaded image into " + savedUrl,
+                           Toast.LENGTH_SHORT).show();
+               }else{
+                   Log.d(TAG ,"permission denied");
+               }
+               break;
+       }
 
 
+
+    }
 
     @Override
     public void onDestroy() {
