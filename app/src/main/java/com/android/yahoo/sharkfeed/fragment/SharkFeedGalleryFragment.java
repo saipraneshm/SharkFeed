@@ -12,14 +12,19 @@ import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.transition.ChangeBounds;
+import android.transition.Slide;
+import android.transition.TransitionInflater;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -289,7 +294,7 @@ public class SharkFeedGalleryFragment extends Fragment {
 
         private ImageView mImageView;
 
-        public PhotoHolder(View itemView) {
+        public PhotoHolder(final View itemView) {
             super(itemView);
             mImageView = (ImageView) itemView
                     .findViewById(R.id.fragment_shark_feed_gallery_image_view);
@@ -301,7 +306,19 @@ public class SharkFeedGalleryFragment extends Fragment {
                     intent.putExtra(LightBoxFragment.DOWNLOAD_URL_C, photo.getUrlC());
                     intent.putExtra(LightBoxFragment.DOWNLOAD_URL_L, photo.getUrlL());
                     intent.putExtra(LightBoxFragment.DOWNLOAD_URL_O, photo.getUrlO());
-                    startActivity(intent);
+                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_T ,photo.getUrlT());
+                    intent.putExtra(LightBoxFragment.DOWNLOAD_PHOTO, photo);
+                    //startActivity(intent);
+
+                    ViewCompat.setTransitionName(itemView, photo.getId());
+                    Fragment lightBoxFragment = LightBoxFragment.newInstance(photo , photo.getId());
+                    getFragmentManager()
+                            .beginTransaction()
+                            .addSharedElement(itemView, ViewCompat.getTransitionName(itemView))
+                            .addToBackStack(TAG)
+                            .replace(R.id.fragment_container, lightBoxFragment)
+                            .commit();
+
                     Log.d(TAG, "clicked on the image with title " + photo.getTitle());
                 }
             });

@@ -4,5 +4,6 @@
            android:layout_height="120dp"
            android:layout_gravity="center"
            android:scaleType="centerCrop"
+           android:transitionName="@string/sharkFeedTransition"
            android:id="@+id/fragment_shark_feed_gallery_image_view"
            android:background="@drawable/ic_image_black_24px"/>

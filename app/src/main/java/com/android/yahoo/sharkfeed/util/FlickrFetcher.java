@@ -4,6 +4,8 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.android.yahoo.sharkfeed.model.Photo;
+import com.android.yahoo.sharkfeed.model.PhotoInfo;
+import com.android.yahoo.sharkfeed.model.PhotoInfoParent;
 import com.android.yahoo.sharkfeed.model.PhotoParent;
 import com.android.yahoo.sharkfeed.model.Photos;
 import com.google.gson.Gson;
@@ -87,6 +89,8 @@ public class FlickrFetcher {
         return photoList;
     }
 
+
+
     private String buildUrl(String query, int page){
         Uri.Builder uriBuilder = ENDPOINT.buildUpon();
         if(query == null){
@@ -116,6 +120,37 @@ public class FlickrFetcher {
         PhotoParent photoParent = gson.fromJson(jsonString, PhotoParent.class);
         List<Photo> listOfPhotos = photoParent.getPhotos().getPhoto();
         photoList.addAll(listOfPhotos);
+    }
+
+
+    public PhotoInfo fetchPhotoInfo(String photoId){
+
+        String url = buildUrl(photoId);
+        try {
+            String jsonString = getUrlString(url);
+            return parsePhotoInfo(jsonString);
+        } catch (IOException e) {
+            Log.e(TAG, "Unable to load photo info for photo id :" + photoId, e );
+        }
+        return null;
+    }
+
+    private String buildUrl(String photoId){
+        return Uri
+                .parse("https://api.flickr.com/services/rest/")
+                .buildUpon()
+                .appendQueryParameter("method","flickr.photos.getInfo")
+                .appendQueryParameter("api_key", API_KEY)
+                .appendQueryParameter("photo_id", photoId)
+                .appendQueryParameter("format", "json")
+                .appendQueryParameter("nojsoncallback", "1")
+                .build().toString();
+    }
+
+    private PhotoInfo parsePhotoInfo(String jsonString){
+        Gson gson = new Gson();
+        PhotoInfoParent photoInfoParent = gson.fromJson(jsonString, PhotoInfoParent.class);
+        return photoInfoParent.getPhotoInfo();
     }
 
 }

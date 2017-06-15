@@ -1,5 +1,8 @@
 package com.android.yahoo.sharkfeed.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
@@ -10,7 +13,7 @@ import java.io.File;
  * created using http://www.jsonschema2pojo.org/
  */
 
-public class Photo {
+public class Photo implements Parcelable {
     @SerializedName("id")
     @Expose
     private String id;
@@ -280,4 +283,80 @@ public class Photo {
     public String getPhotoFileName(){
         return "IMG_" + getId() + ".jpg";
     }
+
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.id);
+        dest.writeString(this.owner);
+        dest.writeString(this.secret);
+        dest.writeString(this.server);
+        dest.writeValue(this.farm);
+        dest.writeString(this.title);
+        dest.writeValue(this.ispublic);
+        dest.writeValue(this.isfriend);
+        dest.writeValue(this.isfamily);
+        dest.writeString(this.urlT);
+        dest.writeString(this.heightT);
+        dest.writeString(this.widthT);
+        dest.writeString(this.urlC);
+        dest.writeValue(this.heightC);
+        dest.writeString(this.widthC);
+        dest.writeString(this.urlL);
+        dest.writeString(this.heightL);
+        dest.writeString(this.widthL);
+        dest.writeString(this.urlO);
+        dest.writeString(this.heightO);
+        dest.writeString(this.widthO);
+        dest.writeString(this.urlS);
+        dest.writeString(this.heightS);
+        dest.writeString(this.widthS);
+    }
+
+    public Photo() {
+    }
+
+    protected Photo(Parcel in) {
+        this.id = in.readString();
+        this.owner = in.readString();
+        this.secret = in.readString();
+        this.server = in.readString();
+        this.farm = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.title = in.readString();
+        this.ispublic = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.isfriend = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.isfamily = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.urlT = in.readString();
+        this.heightT = in.readString();
+        this.widthT = in.readString();
+        this.urlC = in.readString();
+        this.heightC = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.widthC = in.readString();
+        this.urlL = in.readString();
+        this.heightL = in.readString();
+        this.widthL = in.readString();
+        this.urlO = in.readString();
+        this.heightO = in.readString();
+        this.widthO = in.readString();
+        this.urlS = in.readString();
+        this.heightS = in.readString();
+        this.widthS = in.readString();
+    }
+
+    public static final Parcelable.Creator<Photo> CREATOR = new Parcelable.Creator<Photo>() {
+        @Override
+        public Photo createFromParcel(Parcel source) {
+            return new Photo(source);
+        }
+
+        @Override
+        public Photo[] newArray(int size) {
+            return new Photo[size];
+        }
+    };
 }
