@@ -13,9 +13,11 @@ import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -94,7 +96,9 @@ public class SharkFeedGalleryFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_shark_feed_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.shark_feed_gallery_recycler_view);
         mSwipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
+        Toolbar toolbar = (Toolbar) view.findViewById(R.id.fragment_shark_feed_gallery_toolbar);
 
+        ((AppCompatActivity)getActivity()).setSupportActionBar(toolbar);
         GridLayoutManager gridLayoutManager = new GridLayoutManager(getActivity(), 3);
         mPhotoRecyclerView.setLayoutManager(gridLayoutManager);
         setUpAdapter();
