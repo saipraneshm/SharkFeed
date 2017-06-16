@@ -26,7 +26,8 @@ import static com.android.yahoo.sharkfeed.util.PollService.PERM_PRIVATE;
 import static com.android.yahoo.sharkfeed.util.PollService.REQUEST_CODE;
 
 /**
- * Created by sai pranesh on 6/15/2017.
+ * Another implementation of PollService using JobService
+ * This is scheduled using JobScheduler only for devices running Lollipop and above.
  */
 
 @RequiresApi(Build.VERSION_CODES.LOLLIPOP)

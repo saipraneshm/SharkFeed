@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by sai pranesh on 6/12/2017.
+ * This class is used to communicate with the FlickrApi.
  */
 
 public class FlickrFetcher {
@@ -41,6 +41,7 @@ public class FlickrFetcher {
 
 
 
+    //Converts the give url to bytes array which contains the requested url page data
     public static byte[] getUrlBytes(String urlSpec) throws IOException{
 
         URL url = new URL(urlSpec);
@@ -69,10 +70,12 @@ public class FlickrFetcher {
 
     }
 
+    //A helper method which returns the string value of the data downloaded using getUrlBytes(url)
     public static String getUrlString(String urlSpec) throws IOException {
         return new String(getUrlBytes(urlSpec));
     }
 
+    //fetches items and returns the downloaded list of photos
     private List<Photo> fetchItems(String url){
         List<Photo> photoList = new ArrayList<>();
         try{
@@ -91,6 +94,7 @@ public class FlickrFetcher {
 
 
 
+    //Builds the url based on the query and the page passed in to the method
     private String buildUrl(String query, int page){
         Uri.Builder uriBuilder = ENDPOINT.buildUpon();
         if(query == null){
@@ -102,11 +106,13 @@ public class FlickrFetcher {
         return uriBuilder.appendQueryParameter("page", String.valueOf(page)).build().toString();
     }
 
+    //Interface using which we fetch shark photos
     public List<Photo> fetchSharkPhotos(int page){
         String url = buildUrl(null, page);
         return fetchItems(url);
     }
 
+    //Interface using which we fetch shark related photos, we append the query along with shark.
     public List<Photo> searchSharkPhotos(String query , int page){
         String url = buildUrl(query, page);
         Log.d(TAG, "search shark photos url : " + url);
@@ -122,7 +128,7 @@ public class FlickrFetcher {
         photoList.addAll(listOfPhotos);
     }
 
-
+    //Method that helps to download the photo information
     public PhotoInfo fetchPhotoInfo(String photoId){
 
         String url = buildUrl(photoId);
@@ -135,6 +141,7 @@ public class FlickrFetcher {
         return null;
     }
 
+    //constructs url based on the photoId passed.
     private String buildUrl(String photoId){
         return Uri
                 .parse("https://api.flickr.com/services/rest/")
@@ -147,6 +154,7 @@ public class FlickrFetcher {
                 .build().toString();
     }
 
+    //Parses the photoInfo obtained from the FlickrApi
     private PhotoInfo parsePhotoInfo(String jsonString){
         Gson gson = new Gson();
         PhotoInfoParent photoInfoParent = gson.fromJson(jsonString, PhotoInfoParent.class);

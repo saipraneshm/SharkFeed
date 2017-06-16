@@ -25,7 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import static android.os.Environment.isExternalStorageRemovable;
 
 /**
- * Created by sai pranesh on 6/12/2017.
+ * Thumbnail downloader is used for
+ * 1. Loading images and updating the UI using the Main thread handler
+ * 2. Pre-fetching of images and saving them in the cache for faster access of images.
+ * 3. Maintaining a LRU cache for caching purposes that occupies 1/8th of available memory for storage.
+ * 4. Use of disk cache in-case memory-cache is full, for better performance.
  */
 
 public class ThumbnailDownloader<T> extends HandlerThread {
@@ -93,27 +97,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
     }
 
 
-/*
-    public void addBitmapToMemoryCache(String target, Bitmap bitmap){
-        if(getBitmapFromMemoryCache(target) == null){
-            mMemoryCache.put(target, bitmap);
-        }
-    }*/
 
-/*    public void addBitmapToCache(String key, Bitmap bitmap) {
-        // Add to memory cache as before
-        if (getBitmapFromMemoryCache(key) == null) {
-            mMemoryCache.put(key, bitmap);
-        }
-
-        // Also add to disk cache
-        synchronized (mDiskCacheLock) {
-            if (mDiskLruCache != null && mDiskLruCache.get(key) == null) {
-                mDiskLruCache.put(key, bitmap);
-                mDiskLruCache.edit(key).
-            }
-        }
-    }*/
 
     /**
      * Adds a bitmap to both memory and disk cache.

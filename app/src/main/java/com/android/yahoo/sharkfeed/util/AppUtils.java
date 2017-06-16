@@ -13,7 +13,11 @@ import android.view.inputmethod.InputMethodManager;
 import com.android.yahoo.sharkfeed.R;
 
 /**
- * Created by sai pranesh on 6/14/2017.
+ * This is a utility class that helps to
+ * 1. Scale the bitmap using inJustDecodeBounds and inSampleSize
+ * 2. Hide the keyboard if visible to the user using InputManager
+ * 3. To check for network connectivity of the application
+ * 4. To show snackbar based on the availability of the network
  */
 
 public class AppUtils {

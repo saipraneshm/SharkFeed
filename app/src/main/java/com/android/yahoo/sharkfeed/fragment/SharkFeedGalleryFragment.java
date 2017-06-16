@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
@@ -66,12 +67,16 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //To retain the fragment across configuration changes
         setRetainInstance(true);
+
+        //To respond to user input for menu items
         setHasOptionsMenu(true);
 
         updateItems(0, 0, false);
 
-        Handler responseHandler = new Handler();
+        //Main thread handler thread, using which we can post the updates to the UI.
+        Handler responseHandler = new Handler(Looper.getMainLooper());
         mThumbnailDownloader = new ThumbnailDownloader<>(getActivity(),responseHandler);
         mThumbnailDownloader
                 .setThumbnailDownloadListener(new ThumbnailDownloader.ThumbnailDownloadListener<PhotoHolder>() {
@@ -81,7 +86,9 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                         photoHolder.bindDrawable(drawable);
                     }
         });
+        //Starts the thread
         mThumbnailDownloader.start();
+        //Calls onLooperPrepared
         mThumbnailDownloader.getLooper();
 
     }
@@ -89,6 +96,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     @Override
     public void onResume() {
         super.onResume();
+        //Checking for active network connection and displays snackbar when not available
         AppUtils.showSnackBarNetworkConnection(getActivity(),mPhotoRecyclerView);
     }
 
@@ -103,8 +111,12 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         ((AppCompatActivity)getActivity()).setSupportActionBar(toolbar);
         GridLayoutManager gridLayoutManager = new GridLayoutManager(getActivity(), 3);
         mPhotoRecyclerView.setLayoutManager(gridLayoutManager);
+        //Sets the adapter for the recycler view
         setUpAdapter();
-        RecyclerView.OnScrollListener endLessScrollListener = new EndlessRecyclerViewScrollListener(gridLayoutManager) {
+
+        //Endless scrolling implementation
+        RecyclerView.OnScrollListener endLessScrollListener = new
+                EndlessRecyclerViewScrollListener(gridLayoutManager) {
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
                 updateItems(page, totalItemsCount, false);
@@ -116,7 +128,10 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                 mThumbnailDownloader.preload(photo.getUrlS());
             }
         };
+
         mPhotoRecyclerView.addOnScrollListener(endLessScrollListener);
+
+        //To calculate the span count for the GridLayout manager based on screen density
         ViewTreeObserver viewTreeObserver = mPhotoRecyclerView.getViewTreeObserver();
         viewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -125,6 +140,8 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             }
         });
 
+
+        //Pull to refresh
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -132,6 +149,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             }
         });
 
+        //setting color schema for the progress symbol
         mSwipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_bright,
                 android.R.color.holo_green_light,
                 android.R.color.holo_orange_light,
@@ -149,6 +167,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         ((GridLayoutManager) mPhotoRecyclerView.getLayoutManager() ).setSpanCount(spanCount);
     }
 
+    //converts given size in dp to pixels
     private float convertDPToPixels(int dp) {
         DisplayMetrics metrics = new DisplayMetrics();
         getActivity().getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -161,6 +180,8 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_shark_feed_menu, menu);
         final MenuItem menuItem = menu.findItem(R.id.menu_item_search);
+
+        //User can request for shark related images using SearchView
         final SearchView searchView = (SearchView) menuItem.getActionView();
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
@@ -231,7 +252,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                 .execute(String.valueOf(page), query);
     }
 
-
+    //AsynTask that loads the thumbnail images tobe displayed into the GridView of the recycler view
     private class FetchItemsTask extends AsyncTask<String, Void, List<Photo>>{
 
         private RecyclerView.Adapter mAdapter;

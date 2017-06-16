@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by sai pranesh on 6/15/2017.
+ * PollService is used to poll for new search results when available.
  */
 
 public class PollService extends IntentService {
@@ -52,12 +52,17 @@ public class PollService extends IntentService {
 
     @Override
     protected void onHandleIntent(@Nullable Intent intent) {
+        //Returning when network is unavailable
         if(!AppUtils.isNetworkAvailableAndConnected(this)){
             return;
         }
 
+        //Fetching the stored query (if any)
         String query = QueryPreferences.getStoredQuery(this);
+
+        //Fetching the last result id store in the preferences.
         String lastResultId = QueryPreferences.getLastResultId(this);
+
         List<Photo> photosList;
 
         if(query == null){
@@ -66,10 +71,12 @@ public class PollService extends IntentService {
             photosList = new FlickrFetcher().searchSharkPhotos(query, 0);
         }
 
+        //if no results then return
         if(photosList.size() == 0){
             return;
         }
 
+        //Checking the current results with the last result id stored and notifying if new images are found
         String resultId = photosList.get(0).getId();
         if(resultId.equals(lastResultId)){
             Log.d(TAG, "got an old result");
@@ -96,6 +103,7 @@ public class PollService extends IntentService {
 
     }
 
+    //Sending an ordered broadcast to display the notification in the background
     private void showBackgroundNotification(int requestCode, Notification notification){
         Intent i = new Intent(ACTION_SHOW_NOTIFICATION);
         i.putExtra(REQUEST_CODE, requestCode);
@@ -103,7 +111,8 @@ public class PollService extends IntentService {
         sendOrderedBroadcast(i, PERM_PRIVATE, null, null, Activity.RESULT_OK, null, null);
     }
 
-
+    //if app version above lollipop then it uses JobService other wise uses Alarm Manager to set the
+    //interval to keep pooling for new results every 15 minutes.
     public static void setServiceAlarm(Context context, boolean isOn){
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
             setStartJobService(context, isOn);
@@ -126,6 +135,7 @@ public class PollService extends IntentService {
 
     }
 
+    //Checks whether the polling is on or not
     public static boolean isServiceAlarmOn(Context context){
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
             return isJobServiceAlarmOn(context);

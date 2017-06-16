@@ -46,7 +46,9 @@ import com.android.yahoo.sharkfeed.util.HighQualityImageDownloader;
 import java.io.IOException;
 
 /**
- * A simple {@link Fragment} subclass.
+ * This fragment is responsible to show the images to the user and provides them option to,
+ * download the image and view them in flickr page, along the additional information about the
+ * picture to the user.
  */
 public class LightBoxFragment extends Fragment {
 
@@ -60,12 +62,14 @@ public class LightBoxFragment extends Fragment {
     private PhotoInfoParent mPhotoInfoParent = new PhotoInfoParent();
 
     private static final String TAG = LightBoxFragment.class.getSimpleName();
+
     public static final String EXTRA_DOWNLOAD_PHOTO = "LightBoxFragment.EXTRA_DOWNLOAD_PHOTO";
     public static final String EXTRA_TRANSITION_NAME = "LightBoxFragment.EXTRA_TRANSITION_NAME";
     public static final String DIALOG_PHOTO_INFO = "LightBoxFragment.DIALOG_PHOTO_INFO";
 
     private static final int REQUEST_IMAGE_DOWNLOAD = 45;
 
+    //Handler thread
     private HighQualityImageDownloader<ImageView> mImageDownloader;
 
     private ImageView mImageView, mPhotoInfoImageView;
@@ -81,6 +85,7 @@ public class LightBoxFragment extends Fragment {
     }
 
 
+    //An interface to get an instance of fragment
     public static LightBoxFragment newInstance(Photo photo, String transitionName){
         Bundle args = new Bundle();
         args.putParcelable(EXTRA_DOWNLOAD_PHOTO, photo);
@@ -115,12 +120,9 @@ public class LightBoxFragment extends Fragment {
                 mDownloadUrlT = mPhoto.getUrlT();
             }
 
-
-
             if( mDownloadUrlO != null || mDownloadUrlL != null){
                 isHQImageAvailable = true;
             }
-
 
             Handler responseHandler = new Handler();
             mImageDownloader = new HighQualityImageDownloader<>(responseHandler);
@@ -148,6 +150,7 @@ public class LightBoxFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        //Displaying the snackbar in-case there is no network.
         AppUtils.showSnackBarNetworkConnection(getActivity(),mFrameLayout);
     }
 
@@ -156,9 +159,6 @@ public class LightBoxFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_light_box, container, false);
         mImageView = (ImageView) view.findViewById(R.id.high_quality_image_view);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            mImageView.setTransitionName(mTransitionName);
-        }
         mProgressBar = (ProgressBar) view.findViewById(R.id.light_box_image_progress_bar);
         Button downloadButton = (Button) view.findViewById(R.id.download_image_button);
         Button openFlickrButton = (Button) view.findViewById(R.id.open_flickr_page_button);
@@ -166,6 +166,10 @@ public class LightBoxFragment extends Fragment {
         mPhotoTitleTextView = (TextView) view.findViewById(R.id.image_title_text_view);
         mPhotoInfoImageView = (ImageView) view.findViewById(R.id.photo_info_image_view);
         mFrameLayout = (FrameLayout) view.findViewById(R.id.light_box_fragment_frame_layout);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mImageView.setTransitionName(mTransitionName);
+        }
 
         openFlickrButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -205,12 +209,14 @@ public class LightBoxFragment extends Fragment {
         });
 
 
+        //Initially loading the low quality images using AysncTask
         if(mDownloadUrlT != null){
             new BitmapDownloadTask().execute(mDownloadUrlT);
         }else if(mDownloadUrlC != null){
             new BitmapDownloadTask().execute(mDownloadUrlC);
         }
 
+        //Loading and Scaling the images to fit the screen using handler thread
         if(mDownloadUrlO != null){
             mImageDownloader.enqueueHQImageDownload(mImageView, mDownloadUrlO);
         }else if(mDownloadUrlL != null){
@@ -220,6 +226,7 @@ public class LightBoxFragment extends Fragment {
         return view;
     }
 
+    //Saves the bitmap to pictures directory of the phone.
     private void saveBitmapToPictures(){
         Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
         ContentResolver cr = getActivity().getContentResolver();
@@ -259,8 +266,8 @@ public class LightBoxFragment extends Fragment {
 
     }
 
+    //AsyncTask to download low quality image
     private class BitmapDownloadTask extends AsyncTask<String, Void, Bitmap>{
-
 
         @Override
         protected void onPreExecute() {
@@ -293,6 +300,7 @@ public class LightBoxFragment extends Fragment {
         }
     }
 
+    //Displaying photo's title to the user
     private void setTitleText(){
         PhotoInfo photoInfo = mPhotoInfoParent.getPhotoInfo();
         if(photoInfo != null){
@@ -307,6 +315,7 @@ public class LightBoxFragment extends Fragment {
         }
     }
 
+    //Handling progress bar and other layout visibility
     private void updateLayoutAfterDownload(){
         if(mProgressBar.getVisibility() == View.VISIBLE){
             mProgressBar.setVisibility(View.GONE);
@@ -316,6 +325,7 @@ public class LightBoxFragment extends Fragment {
         setTitleText();
     }
 
+    //Downloads the photo information
     private class FetchPhotoInfo extends AsyncTask<String, Void ,Void>{
 
         private PhotoInfoParent mPhotoInfoParent;
@@ -332,12 +342,15 @@ public class LightBoxFragment extends Fragment {
         }
     }
 
+
+    //Destroying the thread when the fragment gets destroyed
     @Override
     public void onDestroy() {
         super.onDestroy();
         mImageDownloader.quit();
     }
 
+    //Clearing the contents of the queue when the fragments view gets destroyed
     @Override
     public void onDestroyView() {
         super.onDestroyView();

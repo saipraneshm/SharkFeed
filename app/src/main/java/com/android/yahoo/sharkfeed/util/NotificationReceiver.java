@@ -9,7 +9,7 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 /**
- * Created by sai pranesh on 6/15/2017.
+ * Standalone receiver which triggers notification only when the app is in the background
  */
 
 public class NotificationReceiver extends BroadcastReceiver {

@@ -5,7 +5,10 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
 /**
- * Created by sai pranesh on 6/12/2017.
+ * This abstract class is used to implement endless scrolling.
+ * Whenever the recycler view reaches the end of the scroll (page), we trigger a method, which
+ * is then called by the recycler view, this method then perform the operation of loading or
+ * appending more pages.
  */
 
 public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnScrollListener {

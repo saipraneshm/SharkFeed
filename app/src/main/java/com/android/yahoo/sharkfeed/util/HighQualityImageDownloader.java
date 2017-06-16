@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by sai pranesh on 6/13/2017.
  * Created another HandlerThread subclass, to handle High Quality image download : instead of using
  * the same thumbnailDownloader for clarity purpose and for better performance
+ * It also scales down the image to fit the screen using AppUtils.scaledBitmap
  */
 
 public class HighQualityImageDownloader<T> extends HandlerThread {

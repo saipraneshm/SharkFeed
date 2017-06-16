@@ -5,7 +5,8 @@ import android.preference.Preference;
 import android.preference.PreferenceManager;
 
 /**
- * Created by sai pranesh on 6/14/2017.
+ * QueryPreferences class is used to store query, last result id and alarm status into the
+ * preference manager. (To persist primitive data across device restarts)
  */
 
 public class QueryPreferences {

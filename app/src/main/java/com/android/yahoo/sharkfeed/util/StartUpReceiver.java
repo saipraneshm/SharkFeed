@@ -6,7 +6,8 @@ import android.content.Intent;
 import android.util.Log;
 
 /**
- * Created by sai pranesh on 6/15/2017.
+ * Standalone receiver to start the alarm or poll service once the device restarts, without having
+ * the user to open the app to start polling for new results again.
  */
 
 public class StartUpReceiver extends BroadcastReceiver {

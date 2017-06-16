@@ -11,6 +11,11 @@ import android.util.Log;
 import com.android.yahoo.sharkfeed.util.PollService;
 
 
+/**
+ * This class is used to check whether the app is currently visible to the user or not.
+ * We are dynamically registering the receiver to receive broadcast intents.
+ */
+
 public abstract class VisibleFragment extends Fragment {
 
     private static final String TAG = VisibleFragment.class.getSimpleName();

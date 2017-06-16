@@ -17,6 +17,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * This dialog is used to display additional information about the photo like,
+ * Photo title, description, owner of the photo, date uploaded and number of views
+ * It can also be extended to include more information and more options.
+* */
 
 public class PhotoInfoDialogFragment extends DialogFragment {
 
@@ -30,6 +35,8 @@ public class PhotoInfoDialogFragment extends DialogFragment {
 
     private String mOwner, mTitle, mDesc , mViews , mDates;
 
+
+    //An interface used to get hold of an instance of the Dialog
     public static PhotoInfoDialogFragment newInstance(PhotoInfo photoInfo){
         Bundle args = new Bundle();
         args.putParcelable(EXTRA_PHOTO_INFO, photoInfo);
@@ -65,6 +72,7 @@ public class PhotoInfoDialogFragment extends DialogFragment {
     }
 
 
+    //A helper method to fill the view based on the information obtained from LightBox.
     private void fillTextViewContent(){
         if(mPhotoInfo != null){
             if(mPhotoInfo.getOwner().getRealname()!= null){
