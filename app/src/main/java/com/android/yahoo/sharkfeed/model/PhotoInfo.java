@@ -1,10 +1,13 @@
 
 package com.android.yahoo.sharkfeed.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class PhotoInfo {
+public class PhotoInfo implements Parcelable {
 
     @SerializedName("id")
     @Expose
@@ -172,4 +175,62 @@ public class PhotoInfo {
     public void setMedia(String media) {
         this.media = media;
     }
+
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.id);
+        dest.writeString(this.secret);
+        dest.writeString(this.server);
+        dest.writeValue(this.farm);
+        dest.writeString(this.dateuploaded);
+        dest.writeValue(this.isfavorite);
+        dest.writeValue(this.license);
+        dest.writeValue(this.safetyLevel);
+        dest.writeValue(this.rotation);
+        dest.writeParcelable(this.owner, flags);
+        dest.writeParcelable(this.title, flags);
+        dest.writeParcelable(this.description, flags);
+        dest.writeParcelable(this.dates, flags);
+        dest.writeString(this.views);
+        dest.writeString(this.media);
+    }
+
+    public PhotoInfo() {
+    }
+
+    protected PhotoInfo(Parcel in) {
+        this.id = in.readString();
+        this.secret = in.readString();
+        this.server = in.readString();
+        this.farm = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.dateuploaded = in.readString();
+        this.isfavorite = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.license = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.safetyLevel = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.rotation = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.owner = in.readParcelable(Owner.class.getClassLoader());
+        this.title = in.readParcelable(Title.class.getClassLoader());
+        this.description = in.readParcelable(Description.class.getClassLoader());
+        this.dates = in.readParcelable(Dates.class.getClassLoader());
+        this.views = in.readString();
+        this.media = in.readString();
+    }
+
+    public static final Parcelable.Creator<PhotoInfo> CREATOR = new Parcelable.Creator<PhotoInfo>() {
+        @Override
+        public PhotoInfo createFromParcel(Parcel source) {
+            return new PhotoInfo(source);
+        }
+
+        @Override
+        public PhotoInfo[] newArray(int size) {
+            return new PhotoInfo[size];
+        }
+    };
 }

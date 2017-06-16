@@ -1,5 +1,6 @@
 package com.android.yahoo.sharkfeed.model;
 
+import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -282,6 +283,14 @@ public class Photo implements Parcelable {
 
     public String getPhotoFileName(){
         return "IMG_" + getId() + ".jpg";
+    }
+
+    public Uri getPhotoPageUri(){
+        return Uri.parse("https://www.flickr.com/photos/")
+                .buildUpon()
+                .appendPath(owner)
+                .appendPath(id)
+                .build();
     }
 
 

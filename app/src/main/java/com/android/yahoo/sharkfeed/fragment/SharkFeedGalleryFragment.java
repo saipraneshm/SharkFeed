@@ -40,6 +40,7 @@ import com.android.yahoo.sharkfeed.model.Photo;
 import com.android.yahoo.sharkfeed.util.AppUtils;
 import com.android.yahoo.sharkfeed.util.EndlessRecyclerViewScrollListener;
 import com.android.yahoo.sharkfeed.util.FlickrFetcher;
+import com.android.yahoo.sharkfeed.util.PollService;
 import com.android.yahoo.sharkfeed.util.QueryPreferences;
 import com.android.yahoo.sharkfeed.util.ThumbnailDownloader;
 
@@ -51,7 +52,7 @@ import java.util.List;
 /**
  * A simple {@link Fragment} subclass.
  */
-public class SharkFeedGalleryFragment extends Fragment {
+public class SharkFeedGalleryFragment extends VisibleFragment {
 
 
     private static final String TAG = SharkFeedGalleryFragment.class.getSimpleName();
@@ -164,11 +165,8 @@ public class SharkFeedGalleryFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_shark_feed_menu, menu);
-
         final MenuItem menuItem = menu.findItem(R.id.menu_item_search);
-
         final SearchView searchView = (SearchView) menuItem.getActionView();
-
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -186,6 +184,13 @@ public class SharkFeedGalleryFragment extends Fragment {
                 return false;
             }
         });
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if(PollService.isServiceAlarmOn(getActivity())){
+            toggleItem.setTitle(R.string.stop_polling);
+        }else{
+            toggleItem.setTitle(R.string.start_polling);
+        }
 
        /* searchView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -205,6 +210,11 @@ public class SharkFeedGalleryFragment extends Fragment {
                // Log.d(TAG, " clicked on clear search ");
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 updateItems(0,0,true);
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -302,22 +312,17 @@ public class SharkFeedGalleryFragment extends Fragment {
                 @Override
                 public void onClick(View view) {
                     Photo photo = (Photo) mImageView.getTag();
-                    Intent intent = new Intent(getActivity(), LightBoxActivity.class);
-                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_C, photo.getUrlC());
-                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_L, photo.getUrlL());
-                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_O, photo.getUrlO());
-                    intent.putExtra(LightBoxFragment.DOWNLOAD_URL_T ,photo.getUrlT());
-                    intent.putExtra(LightBoxFragment.DOWNLOAD_PHOTO, photo);
-                    //startActivity(intent);
 
-                    ViewCompat.setTransitionName(itemView, photo.getId());
-                    Fragment lightBoxFragment = LightBoxFragment.newInstance(photo , photo.getId());
-                    getFragmentManager()
-                            .beginTransaction()
-                            .addSharedElement(itemView, ViewCompat.getTransitionName(itemView))
-                            .addToBackStack(TAG)
-                            .replace(R.id.fragment_container, lightBoxFragment)
-                            .commit();
+                    if(photo != null){
+                        ViewCompat.setTransitionName(itemView, photo.getId());
+                        Fragment lightBoxFragment = LightBoxFragment.newInstance(photo , photo.getId());
+                        getFragmentManager()
+                                .beginTransaction()
+                                .addSharedElement(itemView, ViewCompat.getTransitionName(itemView))
+                                .addToBackStack(TAG)
+                                .replace(R.id.fragment_container, lightBoxFragment)
+                                .commit();
+                    }
 
                     Log.d(TAG, "clicked on the image with title " + photo.getTitle());
                 }
@@ -327,14 +332,6 @@ public class SharkFeedGalleryFragment extends Fragment {
         void bindDrawable(Drawable drawable){
             mImageView.setImageDrawable(drawable);
         }
-
-        /*private File getPhotoFile(Photo photo){
-            File externalFileDir = getActivity().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-
-            if(externalFileDir == null) return null;
-
-            return new File(externalFileDir , photo.getPhotoFileName());
-        }*/
 
     }
 

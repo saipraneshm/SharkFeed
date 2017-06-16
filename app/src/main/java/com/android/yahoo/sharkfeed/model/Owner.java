@@ -1,10 +1,13 @@
 
 package com.android.yahoo.sharkfeed.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class Owner {
+public class Owner implements Parcelable {
 
     @SerializedName("nsid")
     @Expose
@@ -84,4 +87,45 @@ public class Owner {
         this.pathAlias = pathAlias;
     }
 
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.nsid);
+        dest.writeString(this.username);
+        dest.writeString(this.realname);
+        dest.writeString(this.location);
+        dest.writeString(this.iconserver);
+        dest.writeValue(this.iconfarm);
+        dest.writeString(this.pathAlias);
+    }
+
+    public Owner() {
+    }
+
+    protected Owner(Parcel in) {
+        this.nsid = in.readString();
+        this.username = in.readString();
+        this.realname = in.readString();
+        this.location = in.readString();
+        this.iconserver = in.readString();
+        this.iconfarm = (Integer) in.readValue(Integer.class.getClassLoader());
+        this.pathAlias = in.readString();
+    }
+
+    public static final Parcelable.Creator<Owner> CREATOR = new Parcelable.Creator<Owner>() {
+        @Override
+        public Owner createFromParcel(Parcel source) {
+            return new Owner(source);
+        }
+
+        @Override
+        public Owner[] newArray(int size) {
+            return new Owner[size];
+        }
+    };
 }

@@ -8,4 +8,20 @@
     <string name="download_image">Download</string>
     <string name="open_in_flickr">Open in App</string>
     <string name="sharkFeedTransition">Shark Feed Transition</string>
+    <string name="start_polling">Start Polling</string>
+    <string name="stop_polling">Stop Polling</string>
+    <string name="new_pictures_title">New SharkFeed Pictures</string>
+    <string name="new_pictures_text">You have new shark pictures waiting for you in SharkFeed</string>
+
+    <string name="title_activity_splashscreen">SplashscreenActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="tap_to_start">Tap to start feeding</string>
+    <string name="photo_info_title">Photo Info</string>
+    <string name="photo_title">Title: </string>
+    <string name="photo_desc_str">Description:</string>
+    <string name="photo_date_created_str">Date posted:</string>
+    <string name="photo_view_str">Number of views:</string>
+    <string name="photo_owner_str">Owner:</string>
+    <string name="info_not_available">Info not available</string>
 </resources>

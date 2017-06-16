@@ -21,6 +21,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
 import android.transition.TransitionInflater;
 import android.util.Log;
@@ -66,12 +67,13 @@ public class LightBoxFragment extends Fragment {
     public static final String DOWNLOAD_URL_T = "LightBoxFragment.DOWNLOAD_URL_T";
     public static final String DOWNLOAD_PHOTO = "LightBoxFragment.DOWNLOAD_PHOTO";
     public static final String EXTRA_TRANSITION_NAME = "LightBoxFragment.EXTRA_TRANSITION_NAME";
+    public static final String DIALOG_PHOTO_INFO = "LightBoxFragment.DIALOG_PHOTO_INFO";
 
     private static final int REQUEST_IMAGE_DOWNLOAD = 45;
 
     private HighQualityImageDownloader<ImageView> mImageDownloader;
 
-    private ImageView mImageView;
+    private ImageView mImageView, mPhotoInfoImageView;
     private ProgressBar mProgressBar;
     private Button mDownloadButton;
     private Button mOpenFlickrButton;
@@ -154,11 +156,7 @@ public class LightBoxFragment extends Fragment {
                     target.setScaleType(ImageView.ScaleType.FIT_CENTER);
                     target.setImageDrawable(drawable);
                     target.setTag("HQ");
-                    if(mProgressBar.getVisibility() == View.VISIBLE){
-                        mProgressBar.setVisibility(View.GONE);
-                    }
-                    mLinearLayout.setVisibility(View.VISIBLE);
-                    setTitleText();
+                    updateLayoutAfterDownload();
 
                 }
             }
@@ -172,17 +170,36 @@ public class LightBoxFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_light_box, container, false);
-        mImageView = (ImageView) view.findViewById(R.id.highQualityImageView);
+        mImageView = (ImageView) view.findViewById(R.id.high_quality_image_view);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             mImageView.setTransitionName(mTransitionName);
         }
         //mImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        mProgressBar = (ProgressBar) view.findViewById(R.id.lightBoxImgProgressBar);
-        mDownloadButton = (Button) view.findViewById(R.id.downloadImageBtn);
-        mOpenFlickrButton = (Button) view.findViewById(R.id.openFlickrPgBtn);
-        mLinearLayout = (LinearLayout) view.findViewById(R.id.photoOptionsLinearLayout);
-        mPhotoTitleTextView = (TextView) view.findViewById(R.id.imageTitleTextView);
+        mProgressBar = (ProgressBar) view.findViewById(R.id.light_box_image_progress_bar);
+        mDownloadButton = (Button) view.findViewById(R.id.download_image_button);
+        mOpenFlickrButton = (Button) view.findViewById(R.id.open_flickr_page_button);
+        mLinearLayout = (LinearLayout) view.findViewById(R.id.photo_options_linear_layout);
+        mPhotoTitleTextView = (TextView) view.findViewById(R.id.image_title_text_view);
+        mPhotoInfoImageView = (ImageView) view.findViewById(R.id.photo_info_image_view);
 
+        mOpenFlickrButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(Intent.ACTION_VIEW, mPhoto.getPhotoPageUri());
+                startActivity(intent);
+            }
+        });
+
+        mPhotoInfoImageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.d(TAG, "clicking on the photo info");
+                FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                PhotoInfoDialogFragment dialog = PhotoInfoDialogFragment
+                        .newInstance(mPhotoInfoParent.getPhotoInfo());
+                dialog.show(fragmentManager, DIALOG_PHOTO_INFO);
+            }
+        });
 
         mDownloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -283,9 +300,7 @@ public class LightBoxFragment extends Fragment {
                 startPostponedEnterTransition();
             }
             if(!isHQImageAvailable){
-                mProgressBar.setVisibility(View.GONE);
-                mLinearLayout.setVisibility(View.VISIBLE);
-                setTitleText();
+                updateLayoutAfterDownload();
             }
 
         }
@@ -296,6 +311,15 @@ public class LightBoxFragment extends Fragment {
         if(photoInfo != null){
             mPhotoTitleTextView.setText(photoInfo.getTitle().getContent());
         }
+    }
+
+    private void updateLayoutAfterDownload(){
+        if(mProgressBar.getVisibility() == View.VISIBLE){
+            mProgressBar.setVisibility(View.GONE);
+        }
+        mLinearLayout.setVisibility(View.VISIBLE);
+        mPhotoInfoImageView.setVisibility(View.VISIBLE);
+        setTitleText();
     }
 
     private class FetchPhotoInfo extends AsyncTask<String, Void ,Void>{
