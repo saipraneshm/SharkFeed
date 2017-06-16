@@ -7,13 +7,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.android.yahoo.sharkfeed.util.PollService;
 
-/**
- * Created by sai pranesh on 6/15/2017.
- */
 
 public abstract class VisibleFragment extends Fragment {
 

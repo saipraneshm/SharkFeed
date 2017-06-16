@@ -6,8 +6,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.support.design.widget.Snackbar;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+
+import com.android.yahoo.sharkfeed.R;
 
 /**
  * Created by sai pranesh on 6/14/2017.
@@ -45,7 +48,8 @@ public class AppUtils {
 
     public static void hideKeyboard(Context context, View view) {
         if (context == null) return;
-        InputMethodManager inputMethodManager= (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        InputMethodManager inputMethodManager= (InputMethodManager) context
+                .getSystemService(Context.INPUT_METHOD_SERVICE);
         inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
@@ -54,6 +58,20 @@ public class AppUtils {
                 context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         return networkInfo != null && networkInfo.isConnected();
+    }
+
+    public static void showSnackBarNetworkConnection(Context context, View view){
+        if(!isNetworkAvailableAndConnected(context)){
+            final Snackbar snackbar = Snackbar.make(view, R.string.no_internet_connection,
+                    Snackbar.LENGTH_INDEFINITE);
+            snackbar.setActionTextColor(context.getResources().getColor(R.color.colorPrimary))
+                    .setAction(R.string.dismiss, new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            snackbar.dismiss();
+                        }
+                    }).show();
+        }
     }
 
 

@@ -24,4 +24,10 @@
     <string name="photo_view_str">Number of views:</string>
     <string name="photo_owner_str">Owner:</string>
     <string name="info_not_available">Info not available</string>
+    <string name="please_wait">Please wait for the image to load</string>
+    <string name="image_downloaded">Image downloaded into Pictures</string>
+    <string name="view_pictures">VIEW</string>
+    <string name="no_internet_connection">No network. Please try later</string>
+    <string name="dismiss">DISMISS</string>
+    <string name="click_on_info_btn">Click on info for more information</string>
 </resources>

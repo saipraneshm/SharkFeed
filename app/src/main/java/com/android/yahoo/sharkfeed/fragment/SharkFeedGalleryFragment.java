@@ -1,16 +1,14 @@
 package com.android.yahoo.sharkfeed.fragment;
 
 
-import android.app.DownloadManager;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -19,12 +17,8 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
-import android.transition.ChangeBounds;
-import android.transition.Slide;
-import android.transition.TransitionInflater;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -35,7 +29,6 @@ import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 
 import com.android.yahoo.sharkfeed.R;
-import com.android.yahoo.sharkfeed.activity.LightBoxActivity;
 import com.android.yahoo.sharkfeed.model.Photo;
 import com.android.yahoo.sharkfeed.util.AppUtils;
 import com.android.yahoo.sharkfeed.util.EndlessRecyclerViewScrollListener;
@@ -44,7 +37,6 @@ import com.android.yahoo.sharkfeed.util.PollService;
 import com.android.yahoo.sharkfeed.util.QueryPreferences;
 import com.android.yahoo.sharkfeed.util.ThumbnailDownloader;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +50,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     private static final String TAG = SharkFeedGalleryFragment.class.getSimpleName();
     private RecyclerView mPhotoRecyclerView;
     private List<Photo> mPhotos = new ArrayList<>();
-    private RecyclerView.OnScrollListener mEndLessScrollListener;
     private RecyclerView.Adapter mPhotoRecyclerViewAdapter = new PhotoAdapter(mPhotos);
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private SwipeRefreshLayout mSwipeRefreshLayout;
@@ -92,8 +83,13 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         });
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
-        Log.d(TAG, "Background thread started");
 
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        AppUtils.showSnackBarNetworkConnection(getActivity(),mPhotoRecyclerView);
     }
 
     @Override
@@ -108,7 +104,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         GridLayoutManager gridLayoutManager = new GridLayoutManager(getActivity(), 3);
         mPhotoRecyclerView.setLayoutManager(gridLayoutManager);
         setUpAdapter();
-        mEndLessScrollListener = new EndlessRecyclerViewScrollListener(gridLayoutManager){
+        RecyclerView.OnScrollListener endLessScrollListener = new EndlessRecyclerViewScrollListener(gridLayoutManager) {
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
                 updateItems(page, totalItemsCount, false);
@@ -118,10 +114,9 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             public void preloadData(int itemPosition) {
                 Photo photo = mPhotos.get(itemPosition);
                 mThumbnailDownloader.preload(photo.getUrlS());
-              //  Log.d(TAG," got url's for position " + itemPosition + ", url ->" + photo.getUrlS());
             }
         };
-        mPhotoRecyclerView.addOnScrollListener(mEndLessScrollListener);
+        mPhotoRecyclerView.addOnScrollListener(endLessScrollListener);
         ViewTreeObserver viewTreeObserver = mPhotoRecyclerView.getViewTreeObserver();
         viewTreeObserver.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -170,7 +165,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                Log.d(TAG, "query submitted : " + query);
                 AppUtils.hideKeyboard(getActivity(), searchView);
                 menuItem.collapseActionView();
                 searchView.onActionViewCollapsed();
@@ -192,14 +186,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             toggleItem.setTitle(R.string.start_polling);
         }
 
-       /* searchView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String query = QueryPreferences.getStoredQuery(getActivity());
-                Log.d(TAG, "stored  query: " + query);
-                searchView.setQuery(query, false);
-            }
-        });*/
+
     }
 
     @Override
@@ -207,7 +194,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
 
         switch (item.getItemId()){
             case R.id.menu_clear_search:
-               // Log.d(TAG, " clicked on clear search ");
                 QueryPreferences.setStoredQuery(getActivity(), null);
                 updateItems(0,0,true);
                 return true;
@@ -225,7 +211,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     public void onDestroy() {
         super.onDestroy();
         mThumbnailDownloader.quit();
-        Log.d(TAG, "Background thread destroyed");
     }
 
     @Override
@@ -242,7 +227,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
 
     private void updateItems(int page, int totalItemCount, boolean isSearchQuery){
         String query = QueryPreferences.getStoredQuery(getActivity());
-        Log.d(TAG, " update items called with "+ query + " " + page);
         new FetchItemsTask(mPhotoRecyclerViewAdapter, totalItemCount, isSearchQuery)
                 .execute(String.valueOf(page), query);
     }
@@ -268,7 +252,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             if(page.length > 1 && page[1] != null){
                 return flickrFetcher.searchSharkPhotos(page[1], Integer.valueOf(page[0]));
             }else{
-                Log.d(TAG, "default called");
                 return flickrFetcher.fetchSharkPhotos(Integer.valueOf(page[0]));
             }
 
@@ -277,7 +260,6 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         @Override
         protected void onPostExecute(List<Photo> photoList) {
 
-            Log.d(TAG, " on post execute called");
             if(isSearchQuery){
                 mPhotos.clear();
                 mPhotos.addAll(photoList);
@@ -304,7 +286,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
 
         private ImageView mImageView;
 
-        public PhotoHolder(final View itemView) {
+        private PhotoHolder(final View itemView) {
             super(itemView);
             mImageView = (ImageView) itemView
                     .findViewById(R.id.fragment_shark_feed_gallery_image_view);
@@ -313,18 +295,22 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                 public void onClick(View view) {
                     Photo photo = (Photo) mImageView.getTag();
 
-                    if(photo != null){
+                    if(photo != null && AppUtils.isNetworkAvailableAndConnected(getActivity())){
                         ViewCompat.setTransitionName(itemView, photo.getId());
-                        Fragment lightBoxFragment = LightBoxFragment.newInstance(photo , photo.getId());
+                        Fragment lightBoxFragment = LightBoxFragment.newInstance(photo ,
+                                                        photo.getId());
                         getFragmentManager()
                                 .beginTransaction()
                                 .addSharedElement(itemView, ViewCompat.getTransitionName(itemView))
                                 .addToBackStack(TAG)
                                 .replace(R.id.fragment_container, lightBoxFragment)
                                 .commit();
+                    }else{
+                        Snackbar
+                                .make(mPhotoRecyclerView,R.string.please_wait,Snackbar.LENGTH_SHORT);
                     }
 
-                    Log.d(TAG, "clicked on the image with title " + photo.getTitle());
+
                 }
             });
         }

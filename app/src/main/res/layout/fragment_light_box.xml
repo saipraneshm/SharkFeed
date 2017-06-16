@@ -3,6 +3,7 @@
              xmlns:tools="http://schemas.android.com/tools"
              android:layout_width="match_parent"
              android:layout_height="match_parent"
+             android:id="@+id/light_box_fragment_frame_layout"
              tools:context="com.android.yahoo.sharkfeed.fragment.LightBoxFragment">
 
 

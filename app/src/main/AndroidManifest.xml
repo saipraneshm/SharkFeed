@@ -21,8 +21,6 @@
         android:theme="@style/ToolbarSupportTheme">
         <activity android:name=".activity.SharkFeedGalleryActivity">
         </activity>
-        <activity android:name=".activity.LightBoxActivity"/>
-        <activity android:name=".activity.SharkFeedSwipeActivity"/>
 
         <service android:name=".util.PollService"/>
         <service
@@ -44,7 +42,7 @@
         </receiver>
 
         <activity
-            android:name=".activity.SplashscreenActivity"
+            android:name=".activity.SplashScreenActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:theme="@style/FullscreenTheme">
             <intent-filter>

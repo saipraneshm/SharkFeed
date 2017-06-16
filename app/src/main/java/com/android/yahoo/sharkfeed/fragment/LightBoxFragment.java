@@ -3,7 +3,6 @@ package com.android.yahoo.sharkfeed.fragment;
 
 import android.Manifest;
 import android.content.ContentResolver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -14,11 +13,11 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -29,6 +28,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -39,10 +39,9 @@ import com.android.yahoo.sharkfeed.R;
 import com.android.yahoo.sharkfeed.model.Photo;
 import com.android.yahoo.sharkfeed.model.PhotoInfo;
 import com.android.yahoo.sharkfeed.model.PhotoInfoParent;
+import com.android.yahoo.sharkfeed.util.AppUtils;
 import com.android.yahoo.sharkfeed.util.FlickrFetcher;
 import com.android.yahoo.sharkfeed.util.HighQualityImageDownloader;
-
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 
@@ -61,11 +60,7 @@ public class LightBoxFragment extends Fragment {
     private PhotoInfoParent mPhotoInfoParent = new PhotoInfoParent();
 
     private static final String TAG = LightBoxFragment.class.getSimpleName();
-    public static final String DOWNLOAD_URL_C = "LightBoxFragment.DOWNLOAD_URL_C";
-    public static final String DOWNLOAD_URL_L = "LightBoxFragment.DOWNLOAD_URL_L";
-    public static final String DOWNLOAD_URL_O = "LightBoxFragment.DOWNLOAD_URL_O";
-    public static final String DOWNLOAD_URL_T = "LightBoxFragment.DOWNLOAD_URL_T";
-    public static final String DOWNLOAD_PHOTO = "LightBoxFragment.DOWNLOAD_PHOTO";
+    public static final String EXTRA_DOWNLOAD_PHOTO = "LightBoxFragment.EXTRA_DOWNLOAD_PHOTO";
     public static final String EXTRA_TRANSITION_NAME = "LightBoxFragment.EXTRA_TRANSITION_NAME";
     public static final String DIALOG_PHOTO_INFO = "LightBoxFragment.DIALOG_PHOTO_INFO";
 
@@ -75,10 +70,9 @@ public class LightBoxFragment extends Fragment {
 
     private ImageView mImageView, mPhotoInfoImageView;
     private ProgressBar mProgressBar;
-    private Button mDownloadButton;
-    private Button mOpenFlickrButton;
     private LinearLayout mLinearLayout;
     private TextView mPhotoTitleTextView;
+    private FrameLayout mFrameLayout;
 
     private static boolean isHQImageAvailable = false;
 
@@ -86,21 +80,10 @@ public class LightBoxFragment extends Fragment {
         // Required empty public constructor
     }
 
-    public static LightBoxFragment newInstance(String url_c, String url_l, String url_o, String url_t){
-        Bundle args = new Bundle();
-        args.putString(DOWNLOAD_URL_C, url_c);
-        args.putString(DOWNLOAD_URL_L, url_l);
-        args.putString(DOWNLOAD_URL_O, url_o);
-        args.putString(DOWNLOAD_URL_T, url_t);
-
-        LightBoxFragment lightBoxFragment = new LightBoxFragment();
-        lightBoxFragment.setArguments(args);
-        return lightBoxFragment;
-    }
 
     public static LightBoxFragment newInstance(Photo photo, String transitionName){
         Bundle args = new Bundle();
-        args.putParcelable(DOWNLOAD_PHOTO, photo);
+        args.putParcelable(EXTRA_DOWNLOAD_PHOTO, photo);
         args.putString(EXTRA_TRANSITION_NAME, transitionName);
 
         LightBoxFragment lightBoxFragment = new LightBoxFragment();
@@ -120,50 +103,52 @@ public class LightBoxFragment extends Fragment {
                             .inflateTransition(android.R.transition.move));
         }
 
-        mPhoto = getArguments().getParcelable(DOWNLOAD_PHOTO);
+        mPhoto = getArguments().getParcelable(EXTRA_DOWNLOAD_PHOTO);
         mTransitionName = getArguments().getString(EXTRA_TRANSITION_NAME);
 
-        if(mPhoto != null){
-            new FetchPhotoInfo(mPhotoInfoParent).execute(mPhoto.getId());
-            mDownloadUrlC = mPhoto.getUrlC();
-            mDownloadUrlL = mPhoto.getUrlL();
-            mDownloadUrlO = mPhoto.getUrlO();
-            mDownloadUrlT = mPhoto.getUrlT();
-        }
-
-
-
-        if( mDownloadUrlO != null || mDownloadUrlL != null){
-            isHQImageAvailable = true;
-        }
-
-    Log.d(TAG, "Got request in LightBoxFragment for urL : " +
-                "c ->" + mDownloadUrlC +
-                "/n L -> " + mDownloadUrlL +
-                "/n O -> " + mDownloadUrlO);
-
-        Handler responseHandler = new Handler();
-        mImageDownloader = new HighQualityImageDownloader<>(responseHandler);
-        mImageDownloader.setHQImageDownloadListener(new HighQualityImageDownloader.HighQualityImageDownload<ImageView>() {
-            @Override
-            public void onImageDownloaded(ImageView target, Bitmap thumbnail) {
-                //Only added when the attached to the activity
-                if(isAdded()){
-                    Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
-                    startPostponedEnterTransition();
-                   /* Log.d(TAG, " setting high quality image ->"
-                            + mPhotoInfoParent.getPhotoInfo().getDescription().getContent());*/
-                    target.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                    target.setImageDrawable(drawable);
-                    target.setTag("HQ");
-                    updateLayoutAfterDownload();
-
-                }
+        if(AppUtils.isNetworkAvailableAndConnected(getActivity())){
+            if(mPhoto != null){
+                new FetchPhotoInfo(mPhotoInfoParent).execute(mPhoto.getId());
+                mDownloadUrlC = mPhoto.getUrlC();
+                mDownloadUrlL = mPhoto.getUrlL();
+                mDownloadUrlO = mPhoto.getUrlO();
+                mDownloadUrlT = mPhoto.getUrlT();
             }
-        });
-        mImageDownloader.start();
-        mImageDownloader.getLooper();
 
+
+
+            if( mDownloadUrlO != null || mDownloadUrlL != null){
+                isHQImageAvailable = true;
+            }
+
+
+            Handler responseHandler = new Handler();
+            mImageDownloader = new HighQualityImageDownloader<>(responseHandler);
+            mImageDownloader.setHQImageDownloadListener(new HighQualityImageDownloader.HighQualityImageDownload<ImageView>() {
+                @Override
+                public void onImageDownloaded(ImageView target, Bitmap thumbnail) {
+                    //Only added when the attached to the activity
+                    if(isAdded()){
+                        Drawable drawable = new BitmapDrawable(getResources(), thumbnail);
+                        startPostponedEnterTransition();
+                        target.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        target.setImageDrawable(drawable);
+                        target.setTag("HQ");
+                        updateLayoutAfterDownload();
+
+                    }
+                }
+            });
+            mImageDownloader.start();
+            mImageDownloader.getLooper();
+        }
+
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        AppUtils.showSnackBarNetworkConnection(getActivity(),mFrameLayout);
     }
 
     @Override
@@ -174,15 +159,15 @@ public class LightBoxFragment extends Fragment {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             mImageView.setTransitionName(mTransitionName);
         }
-        //mImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         mProgressBar = (ProgressBar) view.findViewById(R.id.light_box_image_progress_bar);
-        mDownloadButton = (Button) view.findViewById(R.id.download_image_button);
-        mOpenFlickrButton = (Button) view.findViewById(R.id.open_flickr_page_button);
+        Button downloadButton = (Button) view.findViewById(R.id.download_image_button);
+        Button openFlickrButton = (Button) view.findViewById(R.id.open_flickr_page_button);
         mLinearLayout = (LinearLayout) view.findViewById(R.id.photo_options_linear_layout);
         mPhotoTitleTextView = (TextView) view.findViewById(R.id.image_title_text_view);
         mPhotoInfoImageView = (ImageView) view.findViewById(R.id.photo_info_image_view);
+        mFrameLayout = (FrameLayout) view.findViewById(R.id.light_box_fragment_frame_layout);
 
-        mOpenFlickrButton.setOnClickListener(new View.OnClickListener() {
+        openFlickrButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(Intent.ACTION_VIEW, mPhoto.getPhotoPageUri());
@@ -193,7 +178,6 @@ public class LightBoxFragment extends Fragment {
         mPhotoInfoImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Log.d(TAG, "clicking on the photo info");
                 FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
                 PhotoInfoDialogFragment dialog = PhotoInfoDialogFragment
                         .newInstance(mPhotoInfoParent.getPhotoInfo());
@@ -201,7 +185,7 @@ public class LightBoxFragment extends Fragment {
             }
         });
 
-        mDownloadButton.setOnClickListener(new View.OnClickListener() {
+        downloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
@@ -213,16 +197,7 @@ public class LightBoxFragment extends Fragment {
                             REQUEST_IMAGE_DOWNLOAD);
 
                 }else{
-                  //  Log.d(TAG, " storing data into the device");
-                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
-                  //  Log.d(TAG, "is bitmap null ? " + (bitmap == null));
-                    ContentResolver cr = getActivity().getContentResolver();
-                    String title = mPhoto.getTitle();
-                    String description = mPhoto.getPhotoFileName();
-                    String savedUrl =  MediaStore.Images.Media
-                            .insertImage(cr, bitmap, title, description);
-                    Toast.makeText(getActivity(), " downloaded image into " + savedUrl,
-                            Toast.LENGTH_SHORT).show();
+                    saveBitmapToPictures();
                 }
 
 
@@ -245,21 +220,35 @@ public class LightBoxFragment extends Fragment {
         return view;
     }
 
+    private void saveBitmapToPictures(){
+        Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+        ContentResolver cr = getActivity().getContentResolver();
+        String title = mPhoto.getTitle();
+        String description = mPhoto.getPhotoFileName();
+        final String savedUrl =  MediaStore.Images.Media
+                .insertImage(cr, bitmap, title, description);
+        Snackbar.make(mFrameLayout, R.string.image_downloaded,Snackbar.LENGTH_SHORT)
+                .setActionTextColor(getResources().getColor(R.color.colorPrimary))
+                .setAction(R.string.view_pictures, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        Intent i = new Intent();
+                        i.setAction(Intent.ACTION_VIEW)
+                                .setData(Uri.parse(savedUrl));
+                        startActivity(i);
+
+                    }
+                }).show();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-      //  Log.d(TAG, "inside request Permisson result");
+
        switch(requestCode){
            case REQUEST_IMAGE_DOWNLOAD:
                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                   Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
-                   ContentResolver cr = getActivity().getContentResolver();
-                   String title = "first download";
-                   String description = "dummy description";
-                   String savedUrl =  MediaStore.Images.Media
-                           .insertImage(cr, bitmap, title, description);
-                   Toast.makeText(getActivity(), " downloaded image into " + savedUrl,
-                           Toast.LENGTH_SHORT).show();
+                  saveBitmapToPictures();
                }else{
                    Log.d(TAG ,"permission denied");
                }
@@ -281,7 +270,6 @@ public class LightBoxFragment extends Fragment {
         @Override
         protected Bitmap doInBackground(String... url) {
             try {
-                Log.d(TAG, "got request for url" + url[0]);
                 byte[] bitmapBytes = FlickrFetcher.getUrlBytes(url[0]);
                 return BitmapFactory.decodeByteArray(bitmapBytes, 0 , bitmapBytes.length);
             } catch (IOException e) {
@@ -295,7 +283,6 @@ public class LightBoxFragment extends Fragment {
         protected void onPostExecute(Bitmap bitmap) {
 
             if(mImageView.getTag()== null){
-                Log.d(TAG, "setting low quality image" + mImageView.getTag());
                 mImageView.setImageBitmap(bitmap);
                 startPostponedEnterTransition();
             }
@@ -309,7 +296,14 @@ public class LightBoxFragment extends Fragment {
     private void setTitleText(){
         PhotoInfo photoInfo = mPhotoInfoParent.getPhotoInfo();
         if(photoInfo != null){
-            mPhotoTitleTextView.setText(photoInfo.getTitle().getContent());
+            String title = photoInfo.getTitle().getContent();
+            if(title == null || title.length()== 0 ){
+                title = getResources().getString(R.string.click_on_info_btn);
+            }
+            if(title.length() > 120){
+                title = title.substring(0,120) + "...";
+            }
+            mPhotoTitleTextView.setText(title);
         }
     }
 

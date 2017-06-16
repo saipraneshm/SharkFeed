@@ -84,6 +84,9 @@ public class PhotoInfoDialogFragment extends DialogFragment {
             }
 
             if(mTitle != null && mTitle.length() > 0){
+                if(mTitle.length() > 120){
+                    mTitle = mTitle.substring(0,120) + "...";
+                }
                 mTitleTv.setText(mTitle);
             }else{
                 mTitleTv.setText(R.string.info_not_available);
@@ -94,6 +97,9 @@ public class PhotoInfoDialogFragment extends DialogFragment {
             }
 
             if(mDesc != null && mDesc.length() > 0){
+                if(mDesc.length() > 120){
+                    mDesc = mDesc.substring(0,120) + "...";
+                }
                 mDescTv.setText(mDesc);
             }else{
                 mDescTv.setText(R.string.info_not_available);
@@ -104,7 +110,8 @@ public class PhotoInfoDialogFragment extends DialogFragment {
             }
 
             if(mDates != null && mDates.length() > 0){
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
+                SimpleDateFormat simpleDateFormat =
+                        new SimpleDateFormat("MM/dd/yyyy", Locale.getDefault());
                 Date date = new Date(System.currentTimeMillis() - Long.parseLong(mDates));
                 mDatesTv.setText(simpleDateFormat.format(date));
             }else{
