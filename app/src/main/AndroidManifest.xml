@@ -18,6 +18,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_shark_logo"
         android:supportsRtl="true"
+        android:largeHeap="true"
+        android:hardwareAccelerated="false"
         android:theme="@style/ToolbarSupportTheme">
         <activity android:name=".activity.SharkFeedGalleryActivity">
         </activity>

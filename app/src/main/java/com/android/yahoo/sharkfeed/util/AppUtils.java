@@ -43,7 +43,7 @@ public class AppUtils {
         }
 
         options = new BitmapFactory.Options();
-        options.inSampleSize = (int) (inSampleSize*1.2);
+        options.inSampleSize = (int) (inSampleSize*2);
 
         //read in and create final bitmap
         return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length, options);

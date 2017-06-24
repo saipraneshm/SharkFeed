@@ -46,7 +46,7 @@ public class HighQualityImageDownloader<T> extends HandlerThread {
 
         final int maxMemory = (int) Runtime.getRuntime().maxMemory(); //getting the max memory
 
-        final int cacheSize = maxMemory / 8; //using 1/8th memory for the cache
+        final int cacheSize = maxMemory / 6; //using 1/6th memory for the cache
 
         mMemCacheForHQImg = new LruCache<String, Bitmap>(cacheSize){
             @Override
@@ -61,7 +61,9 @@ public class HighQualityImageDownloader<T> extends HandlerThread {
 
     private void addBitmapToMemoryCache(String target, Bitmap bitmap){
         if(getBitmapFromMemoryCache(target) == null){
-            mMemCacheForHQImg.put(target, bitmap);
+            if((mMemCacheForHQImg.size() + bitmap.getByteCount()) < mMemCacheForHQImg.maxSize()){
+                mMemCacheForHQImg.put(target, bitmap);
+            }
         }
     }
 

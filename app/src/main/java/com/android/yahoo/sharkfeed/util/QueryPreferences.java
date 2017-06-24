@@ -13,6 +13,7 @@ public class QueryPreferences {
     private static final String PREF_SEARCH_QUERY = "searchQuery";
     private static final String PREF_LAST_RESULT_ID = "lastResultId";
     private static final String PREF_IS_ALARM_ON = "isAlarmOn";
+    private static final String PREF_PAGE_NUMBER = "pageNumber";
 
     public static String getStoredQuery(Context context){
         return PreferenceManager.getDefaultSharedPreferences(context)
@@ -47,6 +48,19 @@ public class QueryPreferences {
         PreferenceManager.getDefaultSharedPreferences(context)
                 .edit()
                 .putBoolean(PREF_IS_ALARM_ON, isOn)
+                .apply();
+    }
+
+
+    public static Integer getPageNumber(Context context){
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getInt(PREF_PAGE_NUMBER, 2);
+    }
+
+    public static void setPageNumber(Context context, Integer pageNumber){
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putInt(PREF_PAGE_NUMBER, pageNumber)
                 .apply();
     }
 

@@ -112,7 +112,8 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
         // Add to memory cache
         if (mMemoryCache != null) {
-            mMemoryCache.put(data, value);
+            if((data.length() + mMemoryCache.size()) < mMemoryCache.maxSize())
+                mMemoryCache.put(data, value);
         }
 
         synchronized (mDiskCacheLock) {

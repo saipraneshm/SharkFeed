@@ -1,6 +1,8 @@
 package com.android.yahoo.sharkfeed.fragment;
 
 
+import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -19,6 +21,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -53,6 +56,11 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     private RecyclerView.Adapter mPhotoRecyclerViewAdapter = new PhotoAdapter(mPhotos);
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
     private SwipeRefreshLayout mSwipeRefreshLayout;
+    private EndlessRecyclerViewScrollListener mEndLessScrollListener;
+
+    private static final String PAGE_NUMBER = "PAGE_NUMBER";
+    private static Integer sPageNumber = 2;
+    private static final int REQUEST_PAGE_NUMBER = 0;
 
 
     public SharkFeedGalleryFragment() {
@@ -95,13 +103,13 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     @Override
     public void onResume() {
         super.onResume();
-        //Checking for active network connection and displays snackbar when not available
+        //Checking for active network connection and displays snack bar when not available
         AppUtils.showSnackBarNetworkConnection(getActivity(),mPhotoRecyclerView);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+                             final Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_shark_feed_gallery, container, false);
         mPhotoRecyclerView = (RecyclerView) view.findViewById(R.id.shark_feed_gallery_recycler_view);
         mSwipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
@@ -114,10 +122,12 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         setUpAdapter();
 
         //Endless scrolling implementation
-        RecyclerView.OnScrollListener endLessScrollListener = new
-                EndlessRecyclerViewScrollListener(gridLayoutManager) {
+        mEndLessScrollListener = new
+                EndlessRecyclerViewScrollListener(gridLayoutManager, getActivity()) {
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+                Log.d(TAG, "Load More Page Number : " + page);
+                sPageNumber = page;
                 updateItems(page, totalItemsCount, false);
             }
 
@@ -128,7 +138,13 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
             }
         };
 
-        mPhotoRecyclerView.addOnScrollListener(endLessScrollListener);
+        if(savedInstanceState != null){
+            sPageNumber = savedInstanceState.getInt(PAGE_NUMBER);
+            mEndLessScrollListener.setCurrentPage(sPageNumber);
+        }
+
+
+        mPhotoRecyclerView.addOnScrollListener(mEndLessScrollListener);
 
         //To calculate the span count for the GridLayout manager based on screen density
         ViewTreeObserver viewTreeObserver = mPhotoRecyclerView.getViewTreeObserver();
@@ -144,6 +160,8 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
+                mEndLessScrollListener
+                        .resetToInitialState();
                 updateItems(0, 0, true);
                 AppUtils.showSnackBarNetworkConnection(getActivity(),mPhotoRecyclerView);
             }
@@ -190,6 +208,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                 menuItem.collapseActionView();
                 searchView.onActionViewCollapsed();
                 QueryPreferences.setStoredQuery(getActivity(), query);
+                mEndLessScrollListener.resetState();
                 updateItems(0,0,true);
                 return true;
             }
@@ -208,6 +227,12 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         }
 
 
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(PAGE_NUMBER , sPageNumber);
     }
 
     @Override
@@ -247,6 +272,7 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
     }
 
     private void updateItems(int page, int totalItemCount, boolean isSearchQuery){
+        QueryPreferences.setPageNumber(getActivity(), page);
         String query = QueryPreferences.getStoredQuery(getActivity());
         new FetchItemsTask(mPhotoRecyclerViewAdapter, totalItemCount, isSearchQuery)
                 .execute(String.valueOf(page), query);
@@ -319,7 +345,10 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
                     if(photo != null && AppUtils.isNetworkAvailableAndConnected(getActivity())){
                         ViewCompat.setTransitionName(itemView, photo.getId());
                         Fragment lightBoxFragment = LightBoxFragment.newInstance(photo ,
-                                                        photo.getId());
+                                                        photo.getId(), sPageNumber);
+                       /* lightBoxFragment
+                                .setTargetFragment(SharkFeedGalleryFragment.this,
+                                        REQUEST_PAGE_NUMBER);*/
                         getFragmentManager()
                                 .beginTransaction()
                                 .addSharedElement(itemView, ViewCompat.getTransitionName(itemView))
@@ -376,4 +405,18 @@ public class SharkFeedGalleryFragment extends VisibleFragment {
         }
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if(resultCode != Activity.RESULT_OK){
+            return;
+        }
+        if(requestCode == REQUEST_PAGE_NUMBER){
+            sPageNumber = data.getIntExtra(LightBoxFragment.EXTRA_PAGE_NUMBER,2);
+            Log.d(TAG, "got page number from light box fragment: " + sPageNumber
+                    + " , " + mEndLessScrollListener.getCurrentPage());
+
+          //  mEndLessScrollListener.setCurrentPage(sPageNumber);
+        }
+
+    }
 }

@@ -102,7 +102,7 @@ public class FlickrFetcher {
         }else{
             uriBuilder.appendQueryParameter("text", "shark " + query);
         }
-
+        Log.d(TAG, "request for page " + page + " " + uriBuilder.appendQueryParameter("page", String.valueOf(page)).build().toString());
         return uriBuilder.appendQueryParameter("page", String.valueOf(page)).build().toString();
     }
 

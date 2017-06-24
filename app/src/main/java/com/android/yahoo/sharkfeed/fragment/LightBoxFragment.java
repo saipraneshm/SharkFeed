@@ -2,6 +2,7 @@ package com.android.yahoo.sharkfeed.fragment;
 
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -64,9 +65,11 @@ public class LightBoxFragment extends Fragment {
     private static final String TAG = LightBoxFragment.class.getSimpleName();
 
     public static final String EXTRA_DOWNLOAD_PHOTO = "LightBoxFragment.EXTRA_DOWNLOAD_PHOTO";
-    public static final String EXTRA_TRANSITION_NAME = "LightBoxFragment.EXTRA_TRANSITION_NAME";
+    public static final String EXTRA_TRANSITION_NAME = "LightBoxFagment.EXTRA_TRANSITION_NAME";
     public static final String DIALOG_PHOTO_INFO = "LightBoxFragment.DIALOG_PHOTO_INFO";
 
+    public static final String EXTRA_PAGE_NUMBER = "LightBoxFragment.EXTRA_PAGE_NUMBER";
+    private static Integer sPageNumber;
     private static final int REQUEST_IMAGE_DOWNLOAD = 45;
 
     //Handler thread
@@ -86,10 +89,13 @@ public class LightBoxFragment extends Fragment {
 
 
     //An interface to get an instance of fragment
-    public static LightBoxFragment newInstance(Photo photo, String transitionName){
+    public static LightBoxFragment newInstance(Photo photo,
+                                               String transitionName,
+                                               Integer pageNumber){
         Bundle args = new Bundle();
         args.putParcelable(EXTRA_DOWNLOAD_PHOTO, photo);
         args.putString(EXTRA_TRANSITION_NAME, transitionName);
+        args.putInt(EXTRA_PAGE_NUMBER, pageNumber);
 
         LightBoxFragment lightBoxFragment = new LightBoxFragment();
         lightBoxFragment.setArguments(args);
@@ -110,6 +116,8 @@ public class LightBoxFragment extends Fragment {
 
         mPhoto = getArguments().getParcelable(EXTRA_DOWNLOAD_PHOTO);
         mTransitionName = getArguments().getString(EXTRA_TRANSITION_NAME);
+        sPageNumber = getArguments().getInt(EXTRA_PAGE_NUMBER);
+        Log.d(TAG, "Got the page number " + sPageNumber);
 
         if(AppUtils.isNetworkAvailableAndConnected(getActivity())){
             if(mPhoto != null){
@@ -355,6 +363,15 @@ public class LightBoxFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         mImageDownloader.clearQueue();
+        /*if(getTargetFragment() != null){
+            Log.d(TAG, "sending the page number back to shark feed");
+            Intent intent = new Intent();
+            intent.putExtra(EXTRA_PAGE_NUMBER, sPageNumber);
+            getTargetFragment()
+                    .onActivityResult(getTargetRequestCode(),
+                            Activity.RESULT_OK, intent);
+        }*/
     }
+
 
 }
